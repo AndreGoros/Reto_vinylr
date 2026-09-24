@@ -1,0 +1,57 @@
+{
+  "generated_at": "2026-09-23T00:00:00",
+  "note": "Datos de EJEMPLO para el modo demo (src/demo.py). No provienen de una llamada real a Spotify. Se usan como respaldo cuando no hay credenciales configuradas o no hay conexión a internet, para que el demo nunca falle.",
+  "count": 5,
+  "albums": [
+    {
+      "spotify_id": "sample_1",
+      "name": "Debí Tirar Más Fotos",
+      "artists": ["Bad Bunny"],
+      "release_date": "2025-01-05",
+      "cover_url": "https://picsum.photos/seed/vinylr1/600/600",
+      "spotify_url": "https://open.spotify.com/",
+      "trend_score": 14.2,
+      "sources": ["sample_data"]
+    },
+    {
+      "spotify_id": "sample_2",
+      "name": "Mañana Será Bonito",
+      "artists": ["Karol G"],
+      "release_date": "2023-02-24",
+      "cover_url": "https://picsum.photos/seed/vinylr2/600/600",
+      "spotify_url": "https://open.spotify.com/",
+      "trend_score": 12.8,
+      "sources": ["sample_data"]
+    },
+    {
+      "spotify_id": "sample_3",
+      "name": "Vice Versa",
+      "artists": ["Feid"],
+      "release_date": "2023-04-27",
+      "cover_url": "https://picsum.photos/seed/vinylr3/600/600",
+      "spotify_url": "https://open.spotify.com/",
+      "trend_score": 10.5,
+      "sources": ["sample_data"]
+    },
+    {
+      "spotify_id": "sample_4",
+      "name": "DATA",
+      "artists": ["Tainy"],
+      "release_date": "2023-05-25",
+      "cover_url": "https://picsum.photos/seed/vinylr4/600/600",
+      "spotify_url": "https://open.spotify.com/",
+      "trend_score": 9.1,
+      "sources": ["sample_data"]
+    },
+    {
+      "spotify_id": "sample_5",
+      "name": "Cosa Nuestra",
+      "artists": ["Rauw Alejandro"],
+      "release_date": "2023-07-13",
+      "cover_url": "https://picsum.photos/seed/vinylr5/600/600",
+      "spotify_url": "https://open.spotify.com/",
+      "trend_score": 8.4,
+      "sources": ["sample_data"]
+    }
+  ]
+}

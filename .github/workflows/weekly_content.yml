@@ -1,0 +1,59 @@
+# Corre el pipeline de detección de tendencias + generación de duelos
+# automáticamente cada semana, y deja los resultados listos para la
+# revisión humana (como artifact descargable, NUNCA publica nada solo).
+#
+# Setup requerido (una sola vez, en GitHub):
+#   Settings → Secrets and variables → Actions → New repository secret
+#     - SPOTIFY_CLIENT_ID
+#     - SPOTIFY_CLIENT_SECRET
+#     - APITEMPLATE_API_KEY
+#     - APITEMPLATE_TEMPLATE_ID
+#
+# También se puede correr manualmente desde la pestaña "Actions" del repo
+# (botón "Run workflow"), sin esperar al cron, útil para pruebas.
+
+name: Generar duelos semanales (Vinylr)
+
+on:
+  schedule:
+    # Todos los lunes a las 08:00 UTC (~02:00 hora CDMX).
+    # Nota: GitHub Actions no garantiza precisión al minuto en horas pico,
+    # puede correr con algunos minutos de retraso.
+    - cron: "0 8 * * 1"
+  workflow_dispatch: {} # permite correrlo manualmente desde la pestaña Actions
+
+jobs:
+  generate-duels:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: Obtener álbumes en tendencia (Spotify)
+        working-directory: src
+        env:
+          SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
+          SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+        run: python fetch_trending.py --top 5 --countries MX AR CO CL
+
+      - name: Generar imágenes de los duelos (APITemplate.io)
+        working-directory: src
+        env:
+          APITEMPLATE_API_KEY: ${{ secrets.APITEMPLATE_API_KEY }}
+          APITEMPLATE_TEMPLATE_ID: ${{ secrets.APITEMPLATE_TEMPLATE_ID }}
+        run: python generate_duels.py
+
+      - name: Subir resultados para revisión humana
+        uses: actions/upload-artifact@v4
+        with:
+          name: duelos-vinylr-${{ github.run_number }}
+          path: data/generated/
+          retention-days: 14

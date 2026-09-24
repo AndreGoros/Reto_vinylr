@@ -1,0 +1,30 @@
+{
+  "name": "Vinylr Content Engine",
+  // Usa el mismo docker-compose.yml que ya tenemos, así el entorno de
+  // VS Code y el de "docker compose run" desde terminal son idénticos.
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "vinylr",
+  "workspaceFolder": "/app",
+
+  // Evita que el contenedor se apague al abrir VS Code (docker-compose ya
+  // tiene tty/stdin_open, pero esto asegura que quede corriendo).
+  "shutdownAction": "stopCompose",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-azuretools.vscode-docker"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  },
+
+  // Se corre una vez al crear el contenedor, por si acaso cambiaron
+  // requirements.txt después del build inicial.
+  "postCreateCommand": "pip install --no-cache-dir -r requirements.txt"
+}
