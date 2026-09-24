@@ -1,0 +1,16 @@
+services:
+  vinylr:
+    build: .
+    container_name: vinylr-content-engine
+    env_file:
+      - .env
+    volumes:
+      # Monta el código para que los cambios se reflejen sin rebuild.
+      - ./src:/app/src
+      # Monta data/ para que los JSON generados aparezcan también en tu
+      # máquina (fuera del contenedor), no solo adentro.
+      - ./data:/app/data
+    # Mantiene el contenedor "vivo" si lo corres con `docker compose up -d`,
+    # útil si prefieres entrar con una shell interactiva (ver README).
+    tty: true
+    stdin_open: true
