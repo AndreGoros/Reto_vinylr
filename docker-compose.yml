@@ -1,7 +1,12 @@
 services:
   vinylr:
     build: .
-    container_name: vinylr-content-engine
+    # NOTA: NO fijar container_name aquí. Un nombre fijo choca si el
+    # proyecto está abierto en más de un checkout/entorno a la vez
+    # (ej. un devcontainer viejo + uno nuevo en otra carpeta) — Docker no
+    # permite 2 contenedores con el mismo nombre corriendo simultáneamente.
+    # Sin este campo, Docker Compose nombra el contenedor automáticamente
+    # usando el nombre del proyecto/carpeta, que sí es único por checkout.
     env_file:
       - .env
     volumes:

@@ -147,6 +147,344 @@ Actions)** y **punto 5 (demo on-demand)**, que no existían antes.
 No hay código nuevo que escribir — esto es un problema de organización de archivos en la máquina del usuario. Se le dan pasos de diagnóstico para confirmar qué tiene realmente en disco, y la forma más confiable de arreglarlo: comprimir el proyecto completo en un único .zip con la estructura de carpetas correcta ya armada, para que solo tenga que descomprimirlo.
 
 ### Estado al cierre de esta iteración
-(se actualiza al terminar, ver respuesta en el chat)
+- [x] Diagnóstico confirmado: la estructura completa (`src/`, `.github/`, `.devcontainer/`, `data/sample/`, etc.) existe correctamente en el entorno de Claude — 15 archivos de código/config, verificado con `find`.
+- [x] Se empaquetó todo el proyecto en `vinylr-content-engine.zip` con la estructura de carpetas ya armada, para eliminar el paso manual de "descargar archivo por archivo y ponerlo en la carpeta correcta" que es la causa más probable del problema.
+- **COMPLETA.**
+
+### Pendiente — confirmar con el usuario
+- [ ] Que descomprima el .zip, haga `git init` + `git add .` + commit + push a su repo de GitHub DESDE esa carpeta ya completa (no desde su repo actual, que aparentemente no tiene `src/`).
+- [ ] Confirmar en WSL que usa `python3` (no `python`) y que activa el venv antes de correr (`source .venv/bin/activate`), ya que Debian/Ubuntu moderno no tiene el alias `python` por defecto y bloquea `pip install` fuera de un venv (PEP 668).
+
+---
+
+## Iteración 8 — Aclarar: ¿Docker o pip local para correr el demo?
+
+**Fecha:** 2026-09-23
+**Contexto:** La estructura del repo ya quedó bien organizada (confirmado por el usuario). Ahora la duda es de flujo: ¿correr `pip install` directo, o primero levantar Docker?
+
+### Respuesta (para no repetir código, solo aclaración)
+No son pasos secuenciales — son dos formas ALTERNATIVAS de tener el entorno de Python listo, nunca se hacen las dos. El prompt que el usuario mostró antes (`root@75e00a8e2516:/workspaces/Reto_Vinyl#`) ya es un contenedor corriendo (VS Code Dev Container / Codespace) — es decir, **Docker ya está activo ahí**, con Python y las dependencias ya resueltas por el `Dockerfile`. En ese caso no hay que "correr Docker" aparte, ya está corriendo; solo falta `pip install -r requirements.txt` (dentro del contenedor) y luego `cd src && python demo.py`. En cambio, en WSL sin devcontainer, no hay Docker de por medio: ahí se usa directamente el venv de Python.
+
+### Estado al cierre de esta iteración
+- [x] Aclarado en el chat, sin ambigüedad, con los 2 escenarios diferenciados y sus comandos exactos.
+- **COMPLETA.**
+
+---
+
+## Iteración 9 — El usuario decide usar SIEMPRE el Dev Container, incluso para el demo
+
+**Fecha:** 2026-09-23
+**Por qué:** En WSL directo siguió fallando (`externally-managed-environment`, `python` no encontrado) — son problemas de cómo Debian/Ubuntu moderno maneja Python fuera de un venv, no del código del proyecto. El usuario prefiere evitarse esa fricción por completo y usar siempre el Dev Container (que ya tiene Python 3.11 y las dependencias resueltas por el `Dockerfile`), incluso solo para correr el demo.
+
+### Qué se está haciendo
+No hay código nuevo — el Dev Container ya existía desde la Iteración 2 (`.devcontainer/devcontainer.json` + `docker-compose.yml`). Esta iteración es puramente instruccional: guiar al usuario para abrir SU carpeta real de WSL (`~/proyectos/Reto_vinylr`) dentro de VS Code y reabrirla en el contenedor, en vez de intentarlo desde la terminal de WSL directamente.
+
+### Estado al cierre de esta iteración
+- [x] Instrucciones dadas en el chat, adaptadas a que el usuario ya tiene el proyecto en WSL en `~/proyectos/Reto_vinylr`.
+- **COMPLETA.**
+
+---
+
+## Iteración 10 — Error al reabrir en el contenedor: falta el archivo `.env`
+
+**Fecha:** 2026-09-23
+**Síntoma:** Docker Compose falla al leer la configuración con `env file .../.env not found`.
+
+### Diagnóstico
+`docker-compose.yml` tiene `env_file: - .env` (a propósito, para inyectar credenciales sin hardcodearlas en la imagen — ver Iteración 2). El usuario nunca copió `.env.example` a `.env`, así que Docker Compose no encuentra el archivo y ni siquiera puede generar su configuración (`docker compose config` falla antes de construir nada). No es un bug: es un paso de setup documentado en el README que se saltó.
+
+### Qué se está haciendo
+No hay código nuevo — se le indica al usuario crear el `.env` (puede quedar vacío/con placeholders por ahora, ya que el demo funciona sin credenciales reales) y reintentar "Reopen in Container".
+
+### Estado al cierre de esta iteración
+- [x] Solución de una sola línea comunicada en el chat.
+- **COMPLETA.**
+
+---
+
+## Iteración 11 — Nuevo fallo al reabrir en contenedor, pero sin el mensaje de causa raíz
+
+**Fecha:** 2026-09-23
+**Situación:** El usuario ya creó `.env` (con `git add` pero sin commit — esto es irrelevante para Docker, que lee del disco directamente, no de git). Volvió a fallar "Reopen in Container", pero el log que compartió solo muestra las líneas de `Exit code 1` y el comando completo, SIN la línea de causa raíz (la iteración anterior sí la tenía: `env file ... not found`). No se puede diagnosticar sin esa línea.
+
+### Qué se está haciendo
+No hay código que tocar todavía — se le pide al usuario el log completo (o al menos las líneas justo arriba de las que compartió) para identificar la causa real antes de proponer una solución, en vez de adivinar.
+
+### Estado al cierre de esta iteración
+- [x] Se pidió más información en el chat en vez de adivinar una solución.
+- **COMPLETA.**
+
+---
+
+## Iteración 12 — Bug real: `container_name` fijo choca entre distintos checkouts del proyecto
+
+**Fecha:** 2026-09-23
+**Causa raíz encontrada:** `docker-compose.yml` (Iteración 2) fijaba `container_name: vinylr-content-engine`. El usuario tiene el proyecto abierto en más de un lugar (una sesión vieja en `/workspaces/Reto_Vinyl`, y ahora en `~/proyectos/Reto_vinylr` vía WSL) — Docker no permite dos contenedores con el mismo nombre corriendo al mismo tiempo, así que el segundo choca con el primero. Esto SÍ es un bug de mi configuración original, no un error del usuario.
+
+### Corrección
+Se quita el `container_name` fijo de `docker-compose.yml`. Sin ese campo, Docker Compose nombra el contenedor automáticamente usando el nombre del proyecto (la carpeta), que sí es distinto entre checkouts — elimina la clase entera de este problema en vez de solo resolver el síntoma puntual.
+
+### Desbloqueo inmediato (sin esperar a bajar el archivo corregido)
+`docker rm -f vinylr-content-engine` en cualquier terminal con Docker (WSL o Windows) borra el contenedor viejo y libera el nombre.
+
+### Estado al cierre de esta iteración
+- [x] `docker-compose.yml` corregido (se quitó `container_name`).
+- [x] Comando de desbloqueo inmediato entregado en el chat.
+- **COMPLETA.**
+
+---
+
+## Iteración 13 — El contenedor se crea bien, pero la shell muere con código 137 (posible OOM)
+
+**Fecha:** 2026-09-23
+**Progreso:** El fix de la Iteración 12 funcionó — el contenedor `reto_vinylr-vinylr-1` se creó sin conflicto de nombre. El problema ahora es distinto y ocurre DESPUÉS: al abrir la shell dentro del contenedor, esta muere con `Exit code 137` justo al ejecutar comandos triviales (`uname -m`, `getent passwd`).
+
+### Diagnóstico
+`137` = `128 + 9` (SIGKILL). No es un error de nuestro código ni de la configuración del proyecto — es casi siempre el kernel matando el proceso por falta de memoria (OOM kill), típicamente porque la VM de WSL2 donde corre Docker Desktop tiene muy poca memoria asignada (`.wslconfig`), o Docker Desktop está bajo presión de recursos en ese momento. Nada en `Dockerfile`/`docker-compose.yml` de este proyecto pide una cantidad de memoria fuera de lo normal (es una imagen `python:3.11-slim`), así que se descarta como causa del proyecto.
+
+### Qué se está haciendo
+No hay código que tocar — se guía al usuario a: 1) verificar memoria disponible en Docker Desktop / WSL2, 2) reiniciar el backend de WSL2 (`wsl --shutdown`) y Docker Desktop, 3) si persiste, subir el límite de memoria en `.wslconfig`.
+
+### Estado al cierre de esta iteración
+- [x] Pasos de diagnóstico y solución entregados en el chat.
+- **COMPLETA.**
+
+---
+
+## Iteración 14 — El error 137 persiste incluso después del reinicio; se cambia de estrategia
+
+**Fecha:** 2026-09-23
+**Situación:** El error 137 sigue apareciendo, ahora específicamente durante "Installing VS Code Server" — ese es un paso que solo existe cuando se usa **VS Code Dev Containers** (VS Code instala su propio servidor remoto dentro del contenedor). No es parte de correr el proyecto en sí.
+
+### Decisión de esta iteración
+Ya llevamos 3 iteraciones troubleshooteando específicamente la integración de VS Code con Docker (nombre de contenedor, `.env`, memoria de WSL2), sin haber llegado todavía a ejecutar una sola línea del proyecto. El objetivo real del usuario es **ver el demo funcionando**, no necesariamente usar la terminal integrada de VS Code dentro del contenedor. Se cambia de estrategia: usar Docker Compose directamente desde la terminal de WSL (`docker compose run`), que NO instala VS Code Server y por lo tanto no puede fallar por esta causa — es la "Opción B" que ya estaba documentada en el README desde la Iteración 2, pero que no se había propuesto como camino a seguir mientras se insistía con Dev Containers.
+
+### Qué se está haciendo
+No hay código nuevo — se redirige al usuario a `docker compose run --rm vinylr python demo.py` como camino inmediato para desbloquear el demo, dejando la investigación de Dev Containers como algo a retomar después (opcional, no bloqueante).
+
+### Estado al cierre de esta iteración
+- [x] Camino alternativo comunicado en el chat.
+- **COMPLETA.**
+
+---
+
+## Iteración 15 — Confirmado: es memoria (Task Manager muestra 89% de RAM en uso)
+
+**Fecha:** 2026-09-23
+**Evidencia:** El usuario compartió una captura del Administrador de Tareas de Windows: **89% de memoria en uso**, con Chrome (17 procesos, ~1.26 GB), Microsoft Edge, Steam Client WebHelper y `VmmemWSL` (la VM de WSL2, ~3.2 GB) corriendo simultáneamente. Esto confirma la hipótesis de la Iteración 13: el error 137 era por presión real de memoria en el sistema, no un problema del proyecto.
+
+### Qué se está haciendo
+No hay código que tocar — se le indica al usuario liberar memoria cerrando aplicaciones pesadas no esenciales (Chrome con 17 pestañas es el mayor consumidor después de la propia VM de WSL) antes de repetir `docker compose build` / `docker compose run`, y opcionalmente fijar un límite de memoria más generoso para WSL2 vía `.wslconfig` ahora que se confirmó que es la causa.
+
+### Estado al cierre de esta iteración
+- [x] Diagnóstico confirmado con evidencia visual, pasos de mitigación entregados en el chat.
+- **COMPLETA.**
+
+---
+
+## Iteración 16 — Comando de PowerShell para forzar el cierre (cerrar ventana no bastó)
+
+**Fecha:** 2026-09-23
+**Situación:** Cerrar las ventanas de Chrome/Edge/Steam no los quitó de memoria — típico de estas apps, que dejan procesos de fondo corriendo (bandeja del sistema, actualizadores, helpers). Se le da al usuario un comando de PowerShell que mata los procesos por nombre, sin depender de cerrar ventanas.
+
+### Estado al cierre de esta iteración
+- [x] Comando entregado en el chat.
+- **COMPLETA.**
+
+---
+
+## Iteración 17 — Pivote: usar venv en WSL en vez de Docker (menos RAM, sin más troubleshooting)
+
+**Fecha:** 2026-09-23
+**Por qué:** Llevamos varias iteraciones troubleshooteando Docker/Dev Containers en una máquina con memoria muy ajustada (89% de uso visto en el Task Manager). Docker Desktop + la VM de WSL2 (`VmmemWSL`, ~3.2 GB solo de base) tienen un costo de memoria que un venv normal no tiene — un venv de Python corre directo sobre WSL, sin capa de virtualización adicional. Dado que el usuario pidió explícitamente "la opción que consuma menos RAM y que me permita probarlo ya", se recomienda **abandonar Docker por ahora** para el propósito inmediato de probar el demo, y usar el venv que YA existe (se vio en un mensaje anterior: `/home/ragj/proyectos/reto_vinylr/Reto_vinylr/.venv/`, con `requests`, `python-dotenv` y `Pillow` ya instalados ahí).
+
+### Qué se está haciendo
+No hay código nuevo — es un cambio de estrategia de ejecución, no del proyecto. Docker/Dev Containers se queda documentado y disponible para más adelante (ej. para el workflow de GitHub Actions, que no corre en la máquina del usuario, sino en los servidores de GitHub — ahí no hay problema de RAM local).
+
+### Estado al cierre de esta iteración
+- [x] Comandos exactos entregados en el chat para activar el venv existente y correr el demo, sin Docker.
+- **COMPLETA.**
+
+---
+
+## Iteración 18 — Aclaración: el venv funciona con los archivos que ya tiene, sin nada nuevo
+
+**Fecha:** 2026-09-23
+**Pregunta del usuario:** Si el enfoque de venv funciona con los documentos/archivos que ya tiene (el repo ya reorganizado desde el .zip de la Iteración 7), sin necesitar algo nuevo de mi parte.
+
+### Respuesta
+Sí. `requirements.txt`, `src/demo.py`, `data/sample/...` — todo lo que usa el venv ya está en su repo actual, sin cambios. El venv es solo una forma distinta de EJECUTAR el mismo código, no una versión distinta del proyecto. No hay nada que descargar de nuevo.
+
+### Estado al cierre de esta iteración
+- [x] Aclarado en el chat.
+- **COMPLETA.**
+
+---
+
+## Iteración 20 — Tutorial de plantilla APITemplate.io + investigación de costos de Spotify
+
+**Fecha:** 2026-09-23
+
+### Investigación: ¿la API de Spotify genera cargos?
+No hay costo monetario — es gratis, con límites de tasa (rate limits), no de facturación. **Pero** desde febrero de 2026 Spotify endureció las reglas de "Developer Mode": la cuenta que crea la app debe tener **Spotify Premium** (ya no basta una cuenta gratis) para poder crear/mantener la app en el dashboard. Esta restricción parece apuntar sobre todo a apps que piden login de usuario (OAuth) — nuestro caso usa Client Credentials Flow (sin login de usuario, solo datos públicos), pero no hay evidencia 100% clara de si el requisito de Premium aplica igual a ese flujo. Se le advierte al usuario de esto y se le dice que lo confirme al momento de crear la app.
+
+### Qué se está haciendo
+Se entrega un tutorial paso a paso para crear la plantilla visual en APITemplate.io con los nombres de capas EXACTOS que ya espera el código (`template_client.py`), y cómo obtener el `template_id` al final.
+
+### Estado al cierre de esta iteración
+- [x] Tutorial e investigación de costos entregados en el chat.
+- **COMPLETA.**
+
+---
+
+## Iteración 21 — Documento de contexto del proyecto (para compartir/presentar)
+
+**Fecha:** 2026-09-23
+**Objetivo:** El usuario pidió un markdown aparte (no `PROGRESS.md`, que es el log de iteraciones) que resuma: contexto del proyecto, objetivo deseado, y la idea/arquitectura considerada hasta ahora. Es un documento de presentación/referencia, no de seguimiento técnico.
+
+### Qué se está haciendo
+Se crea `CONTEXTO_PROYECTO.md` con un resumen ejecutivo de todo lo acordado en la conversación: el problema de Vinylr, la propuesta del equipo (duelos VS, Lun/Vie, revisión humana), y la arquitectura técnica construida hasta ahora (Spotify + APITemplate.io + Docker + GitHub Actions + demo on-demand).
+
+### Estado al cierre de esta iteración
+- [x] `CONTEXTO_PROYECTO.md` creado — resumen ejecutivo del contexto, objetivo, y arquitectura considerada, sin el detalle iteración-por-iteración de PROGRESS.md.
+- **COMPLETA.**
+
+---
+
+## Iteración 22 — Revisión de la plantilla real ya construida en APITemplate.io
+
+**Fecha:** 2026-09-23
+**Qué se está haciendo:** El usuario compartió una captura de su plantilla "Post_vs" ya en construcción en el editor de APITemplate.io. Se revisa el panel de capas contra los 6 nombres que espera el código (`template_client.py`).
+
+### Hallazgos
+- ✅ Presentes y bien nombrados: `album_a_cover`, `album_a_name`, `album_a_artist`, `album_b_artist`.
+- ❌ Falta `album_b_cover` — no aparece ninguna capa con ese nombre.
+- ⚠️ Hay una capa `album_a_name_1` (nombre duplicado, probablemente una copia de `album_a_name` sin renombrar) y NO existe `album_b_name` — muy probablemente esa capa duplicada es la que debía llamarse `album_b_name`.
+- `rect-image_1` / `rect-image_2`, `text_1`/`text_2`/`text_2_1`/`text_3` parecen ser elementos decorativos/fijos (título "Tu decides quien gana", "VS", watermark "Vinylr") — no necesitan nombre especial si de verdad son fijos, pero se le pide al usuario confirmarlo.
+
+### Estado al cierre de esta iteración
+- [x] Feedback específico entregado en el chat con las correcciones exactas a hacer antes de guardar la plantilla.
+- **COMPLETA.**
+
+---
+
+## Iteración 23 — Aclaración: ¿el demo funciona con APITemplate.io real pero sin Spotify?
+
+**Fecha:** 2026-09-23
+**Pregunta:** El usuario ya llenó `APITEMPLATE_API_KEY` y `APITEMPLATE_TEMPLATE_ID`, pero no `SPOTIFY_CLIENT_ID`/`SECRET` todavía. ¿Funciona `demo.py` en ese estado intermedio?
+
+### Respuesta (repasando la lógica de `demo.py`)
+Sí, funciona — y de hecho es una combinación útil para probar: como no hay credenciales de Spotify, `get_albums()` cae automáticamente al fallback de datos de ejemplo (`data/sample/trending_albums_sample.json`). Pero como SÍ hay credenciales de APITemplate.io, `_try_real_template()` sí tiene éxito y genera la imagen usando la **plantilla real ya diseñada**, solo que con los álbumes de ejemplo (Bad Bunny, Karol G, etc. con carátulas placeholder) en vez de datos reales de tendencias. Es la forma perfecta de validar que la plantilla se ve bien ANTES de tener Spotify configurado.
+
+### Estado al cierre de esta iteración
+- [x] Respuesta entregada en el chat.
+- **COMPLETA.**
+
+---
+
+## Iteración 24 — BUG real: el `.env` nunca se cargaba (faltaba `load_dotenv()`)
+
+**Fecha:** 2026-09-23
+**Síntoma:** El usuario ya llenó `SPOTIFY_CLIENT_ID/SECRET` y `APITEMPLATE_API_KEY/TEMPLATE_ID` en `.env`, corrió `python demo.py`, y el log dice `Faltan APITEMPLATE_API_KEY y/o APITEMPLATE_TEMPLATE_ID` — es decir, el script no las está viendo.
+
+### Causa raíz (bug real, no error del usuario)
+`python-dotenv` está en `requirements.txt` desde la Iteración 5, pero **nunca se llamó a `load_dotenv()`** en ningún script — solo se mencionó como opcional en el README. Sin esa llamada, Python nunca lee el archivo `.env`; solo funciona si el propio terminal/IDE inyecta esas variables (que es justo lo que la notificación de VS Code en la captura del usuario dice que está desactivado: "terminal environment injection is disabled").
+
+### Corrección
+Se agrega `load_dotenv()` al inicio de `demo.py`, `fetch_trending.py` y `generate_duels.py`, para que el `.env` se cargue siempre sin depender de configuración del IDE ni de exportar variables manualmente. No afecta a Docker/GitHub Actions (ahí las variables ya llegan inyectadas directo por `env_file`/`secrets`, y `load_dotenv()` simplemente no encuentra archivo `.env` y no hace nada, sin error).
+
+### Estado al cierre de esta iteración
+- [x] `load_dotenv()` agregado a `demo.py`, `fetch_trending.py` y `generate_duels.py` — los 3 puntos de entrada del proyecto.
+- **COMPLETA.**
+
+---
+
+## Iteración 25 — Falta un `.gitignore` (el `.venv/` se iba a subir a git)
+
+**Fecha:** 2026-09-23
+**Hallazgo:** El proyecto tenía `.dockerignore` (para Docker) pero nunca un `.gitignore` (para git) — un descuido real de mi parte. Sin él, `git add .` sube TODO el contenido de `.venv/` (miles de archivos de paquetes de Python instalados) al repositorio, además de `__pycache__/`, `.env` (con credenciales) y los JSON generados por el pipeline.
+
+### Corrección
+Se crea `.gitignore` en la raíz del proyecto, cubriendo: `.venv/`/`venv/`, `__pycache__/`, `.env` (nunca las credenciales a git), y las salidas generadas (`data/generated/`, `data/demo_output/`) que no son código fuente y no deberían versionarse.
+
+### Estado al cierre de esta iteración
+- [x] `.gitignore` creado en la raíz del proyecto.
+- **COMPLETA.**
+
+---
+
+## Iteración 26 — HALLAZGO CRÍTICO: Spotify bloqueó (403) los endpoints que usamos, y NO es un bug nuestro
+
+**Fecha:** 2026-09-23
+**Síntoma:** Con credenciales reales ya configuradas, `demo.py` intenta Spotify y **los 8 requests fallan con 403 Forbidden** (Top 50 de los 4 países + new-releases de los 4 países). El fallback a datos de ejemplo funcionó perfecto (esa parte del diseño de la Iteración 5 demostró su valor: el demo no se cayó).
+
+### Investigación — esto es una política de plataforma, no un error de código
+Se confirmó con múltiples fuentes independientes (issues de GitHub de otros proyectos, foros de la comunidad de Spotify) que Spotify ha venido restringiendo agresivamente su Web API desde noviembre 2024, y de nuevo en febrero 2026:
+- **Nov 2024:** se eliminaron/restringieron permanentemente `GET /browse/featured-playlists`, `GET /browse/categories/{id}/playlists` y varios endpoints de audio-features/recomendaciones para apps nuevas en "Development Mode".
+- **Feb 2026:** se renombró la ruta de tracks de playlist (`/playlists/{id}/tracks` → `/playlists/{id}/items`), se exige cuenta Premium para el dueño de la app, y — según reportes de otros desarrolladores — **muchos endpoints de catálogo devuelven 403 en Development Mode incluso con credenciales válidas y correctamente autenticadas**, a menos que la app tenga "Extended Quota Mode" (que requiere empresa registrada + 250,000 usuarios activos — inalcanzable para un MVP de hackathon).
+
+Las playlists "Top 50 - <país>" que usa nuestro código son exactamente el tipo de contenido editorial/algorítmico de Spotify que ha estado cayendo bajo estas restricciones (misma categoría que "featured-playlists", que sí está confirmado como bloqueado desde 2024).
+
+### Qué significa esto para el proyecto
+El enfoque de "Spotify API con Client Credentials Flow" para detectar tendencias, tal como se diseñó en la Iteración 1, **puede ya no ser viable** para una app nueva en Development Mode en 2026 — no por algo que hicimos mal, sino porque Spotify cerró esa puerta a nivel de plataforma para desarrolladores individuales/hobby.
+
+### Opciones a decidir con el usuario (se pregunta en el chat, no se decide unilateralmente)
+1. Migrar la fuente de datos a **Last.fm API** (histórico gratis, sin este tipo de restricción reportada) — requiere construir un cliente nuevo, pero el resto del pipeline (formato de `trending_albums_*.json`, generación de duelos, plantilla) no cambia nada.
+2. Aceptar curaduría manual semanal (una persona anota 5 álbumes en un JSON simple cada semana, en vez de una API) — más alineado incluso con el espíritu de "revisión humana" que ya pide la propuesta, y elimina el riesgo de dependER de una API externa inestable, a costa de un poco más de trabajo manual semanal.
+3. Mantener el intento de Spotify como estaba (por si acaso Spotify restaura algo, o por si esta cuenta de desarrollador en particular sí tiene algún acceso distinto) y confiar en el fallback de datos de ejemplo mientras tanto — no recomendado como solución final para el pitch del hackathon, pero cero esfuerzo adicional.
+
+### Estado al cierre de esta iteración
+- [x] Hallazgo documentado con evidencia.
+- [x] Decisión del usuario: migrar a Last.fm API.
+- **COMPLETA.**
+
+---
+
+## Iteración 27 — Migración de Spotify a Last.fm para la detección de tendencias
+
+**Fecha:** 2026-09-23
+**Decisión del usuario:** Migrar a Last.fm API (gratis, con API key simple, sin el bloqueo de "Development Mode" que tiene Spotify).
+
+### Diferencias clave de la API de Last.fm vs. Spotify (importante para el código)
+- Autenticación: **una sola API key** (no Client ID + Secret, no OAuth, no flujo de token) — se obtiene gratis en https://www.last.fm/api/account/create
+- No tiene el concepto de "playlists editoriales Top 50" — el equivalente es `geo.gettoptracks`, que devuelve las canciones más escuchadas (scrobbles) por país.
+- No tiene un método directo de "álbumes trending por país" — solo por canción. Para llegar al álbum hay que resolver cada canción con `track.getInfo`, que sí devuelve el álbum al que pertenece (cuando Last.fm tiene ese dato).
+- Los países se piden por NOMBRE completo (`"Mexico"`, `"Argentina"`), no por código ISO como en Spotify (`"MX"`, `"AR"`).
+- No siempre hay `release_date` disponible desde este flujo — se deja como `null` cuando falta, downstream ya lo tolera (no es un campo obligatorio para generar la imagen del duelo).
+
+### Qué se está construyendo
+1. `src/lastfm_client.py` — cliente nuevo, mucho más simple que el de Spotify (una sola credencial, sin refresh de tokens).
+2. Se reescribe la lógica interna de `src/fetch_trending.py` para usar Last.fm en vez de Spotify — se mantiene el mismo nombre de archivo, misma interfaz de línea de comandos, y el mismo esquema de JSON de salida (`name`, `artists`, `cover_url`, `trend_score`, etc.), para que `generate_duels.py` y `demo.py` seguir funcionando SIN cambios.
+3. `.env.example` — se agrega `LASTFM_API_KEY`; se dejan las variables de Spotify comentadas como "legacy/deprecado" en vez de borrarlas, por si Spotify cambia de política más adelante.
+4. `.github/workflows/weekly_content.yml` — se actualiza el secret que usa.
+5. `spotify_client.py` se conserva sin tocar (no se borra el código), simplemente deja de ser el usado por default.
+
+### Estado al cierre de esta iteración
+- [x] `src/lastfm_client.py` creado.
+- [x] `src/fetch_trending.py` reescrito para Last.fm, mismo esquema de salida.
+- [x] `src/demo.py` actualizado (usa Last.fm en vez de Spotify).
+- [x] `.env.example` actualizado (`LASTFM_API_KEY` nuevo, Spotify comentado como legacy).
+- [x] `.github/workflows/weekly_content.yml` actualizado (secret `LASTFM_API_KEY`).
+- [x] `spotify_client.py` se conserva sin borrar, ya no se usa por default.
+- **COMPLETA.** No se cortó por límite de tokens.
+
+### Pendiente
+- [ ] El usuario necesita crear su cuenta gratis en https://www.last.fm/api/account/create y obtener su API key.
+- [ ] No se pudo probar en vivo (sin internet en este entorno) — falta confirmar que `geo.gettoptracks` con nombres de país en inglés funciona como se espera, y que la resolución vía `track.getinfo` efectivamente encuentra álbum para una porción razonable de las canciones top (es posible que muchas canciones sueltas/singles no tengan álbum asociado en Last.fm, lo cual reduciría cuántos álbumes distintos se logran juntar — a validar con una corrida real).
+
+---
+
+## Iteración 19 — El venv no existe en esta carpeta (era de otra ruta distinta)
+
+**Fecha:** 2026-09-23
+**Diagnóstico:** El venv que el usuario mostró antes funcionando estaba en `~/proyectos/reto_vinylr/Reto_vinylr/.venv` (minúscula, anidado) — una carpeta DISTINTA a la actual `~/proyectos/Reto_vinylr` (mayúscula, la que sí tiene la estructura correcta del .zip). Son dos clones/carpetas diferentes del proyecto. Por eso `.venv/bin/activate` no existe aquí: nunca se creó un venv en esta ruta.
+
+### Qué se está haciendo
+No hay código nuevo — se le dan los comandos para crear el venv en la carpeta correcta, incluyendo el paquete de sistema que Debian a veces requiere (`python3-venv`) antes de que `python3 -m venv` funcione correctamente.
+
+### Estado al cierre de esta iteración
+- [x] Comandos entregados en el chat.
+- **COMPLETA.**
+
 
 
