@@ -28,7 +28,11 @@ import os
 from datetime import datetime
 from typing import Any, Dict, List
 
+from dotenv import load_dotenv
+
 from template_client import TemplateClient
+
+load_dotenv()  # Carga variables de .env sin depender de que el terminal/IDE lo haga por su cuenta.
 
 
 def _find_latest_trending_file(data_dir: str) -> str:

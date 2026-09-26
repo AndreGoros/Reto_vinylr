@@ -31,6 +31,9 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import requests
+from dotenv import load_dotenv
+
+load_dotenv()  # Carga variables de .env sin depender de que el terminal/IDE lo haga por su cuenta.
 
 # Import de los módulos ya construidos en iteraciones anteriores.
 from generate_duels import build_duels, _load_albums  # reutilizamos su lógica de emparejamiento
@@ -51,18 +54,18 @@ TEXT_COLOR = (245, 245, 245)
 def get_albums(force_sample: bool) -> List[Dict[str, Any]]:
     if not force_sample:
         try:
-            from spotify_client import SpotifyClient
+            from lastfm_client import LastfmClient
             from fetch_trending import collect_trending_albums
 
-            print("[datos] Intentando obtener álbumes en tendencia vía Spotify API...")
-            client = SpotifyClient()  # lanza SpotifyAuthError si faltan credenciales
-            albums = collect_trending_albums(client, ["MX", "AR", "CO", "CL"], top_n=5)
+            print("[datos] Intentando obtener álbumes en tendencia vía Last.fm API...")
+            client = LastfmClient()  # lanza LastfmAPIError si falta LASTFM_API_KEY
+            albums = collect_trending_albums(client, ["Mexico", "Argentina", "Colombia", "Chile"], top_n=5)
             if albums:
-                print(f"[datos] OK — {len(albums)} álbumes obtenidos de Spotify en vivo.")
+                print(f"[datos] OK — {len(albums)} álbumes obtenidos de Last.fm en vivo.")
                 return albums
-            print("[datos] Spotify no devolvió álbumes, se usa el respaldo de ejemplo.")
+            print("[datos] Last.fm no devolvió álbumes, se usa el respaldo de ejemplo.")
         except Exception as exc:  # noqa: BLE001 - cualquier falla cae al plan B
-            print(f"[datos] No se pudo usar Spotify en vivo ({exc}). Se usa el respaldo de ejemplo.")
+            print(f"[datos] No se pudo usar Last.fm en vivo ({exc}). Se usa el respaldo de ejemplo.")
 
     print("[datos] Usando datos de EJEMPLO (data/sample/trending_albums_sample.json).")
     return _load_albums(SAMPLE_DATA_PATH)

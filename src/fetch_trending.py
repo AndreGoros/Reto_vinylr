@@ -1,138 +1,88 @@
 """
 fetch_trending.py
 ------------------
-Script principal de la Etapa 1 (Detección de tendencias) del motor de
-contenido de Vinylr.
+Etapa 1 del pipeline: obtiene álbumes en tendencia en LatAm.
+
+NOTA (Iteración 27): este script usaba Spotify API, pero Spotify empezó a
+devolver 403 Forbidden en los endpoints de contenido editorial para apps
+nuevas en "Development Mode" (ver PROGRESS.md, Iteración 26). Se migró a
+Last.fm API, que no tiene esa restricción. El esquema del JSON de salida
+se mantuvo igual a propósito, para que `generate_duels.py` y `demo.py`
+sigan funcionando sin cambios.
 
 Qué hace:
-1. Recorre las playlists editoriales "Top 50" de varios países de LatAm.
-2. Recorre "new releases" de esos mismos países.
-3. Combina todo, deduplica por álbum, y calcula un score de tendencia simple:
-      score = (apariciones en distintas playlists Top 50 del país)
-              + (posición dentro de cada playlist, ponderada)
-              + bonus si es lanzamiento reciente (últimos 30 días)
-4. Guarda el top N resultante en data/trending_albums_<fecha>.json
+1. Para cada país de LatAm, pide las canciones más escuchadas (`geo.gettoptracks`).
+2. Para cada canción (hasta un límite, para no saturar la API), resuelve su
+   álbum vía `track.getinfo` — Last.fm no da álbumes directamente por país.
+3. Agrega por álbum (cuenta cuántas canciones distintas de ese álbum aparecen
+   en el top, ponderado por posición), deduplica, y guarda el top N.
 
 Uso:
-    python src/fetch_trending.py --top 8 --countries MX AR CO CL
-
-Pensado para correrse 1 vez por semana (ej. lunes en la madrugada vía cron /
-GitHub Actions) y alimentar la Etapa 2 (generación de brief creativo).
+    python src/fetch_trending.py --top 5 --countries Mexico Argentina Colombia Chile
 """
 
 import argparse
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any, Dict, List
 
-from spotify_client import SpotifyClient
+from dotenv import load_dotenv
 
-# ---------------------------------------------------------------------- #
-# Playlists editoriales "Top 50" oficiales de Spotify por país (LatAm).
-#
-# NOTA IMPORTANTE: Spotify a veces cambia o retira IDs de playlists
-# editoriales. Estos son los IDs públicos conocidos al momento de escribir
-# este script. Si alguno da 404, hay que buscar el ID actualizado en
-# open.spotify.com/playlist/<id> desde la playlist oficial "Top 50 - <país>".
-# ---------------------------------------------------------------------- #
-TOP50_PLAYLISTS = {
-    "MX": "37i9dQZEVXbO3qyFxbkOE1",  # Top 50 - Mexico
-    "AR": "37i9dQZEVXbMMy2roB9myp",  # Top 50 - Argentina
-    "CO": "37i9dQZEVXbOa2lmxNORXQ",  # Top 50 - Colombia
-    "CL": "37i9dQZEVXbL0GavIqMTeb",  # Top 50 - Chile
-    "GLOBAL": "37i9dQZEVXbMDoHDwVN2tF",  # Top 50 - Global
-}
+from lastfm_client import LastfmClient
 
-RECENT_RELEASE_BONUS_DAYS = 30
-RECENT_RELEASE_BONUS_POINTS = 2.0
+load_dotenv()  # Carga variables de .env sin depender de que el terminal/IDE lo haga por su cuenta.
+
+# Cuántas canciones del top de cada país se intentan resolver a álbum.
+# Cada una es una llamada extra a la API (track.getinfo), así que se limita
+# para no hacer decenas de requests innecesarios por país.
+TRACKS_TO_RESOLVE_PER_COUNTRY = 20
 
 
-def _album_key(album: Dict[str, Any]) -> str:
-    """Usamos el ID de Spotify como llave única del álbum."""
-    return album["id"]
-
-
-def _normalize_album(album: Dict[str, Any]) -> Dict[str, Any]:
-    """Extrae solo los campos que nos importan para el brief creativo."""
-    images = album.get("images", [])
-    cover_url = images[0]["url"] if images else None
-    return {
-        "spotify_id": album["id"],
-        "name": album["name"],
-        "artists": [a["name"] for a in album.get("artists", [])],
-        "release_date": album.get("release_date"),
-        "cover_url": cover_url,
-        "spotify_url": album.get("external_urls", {}).get("spotify"),
-    }
-
-
-def _is_recent(release_date: str, days: int) -> bool:
-    """Spotify a veces da release_date con precisión de año o año-mes."""
-    for fmt in ("%Y-%m-%d", "%Y-%m", "%Y"):
-        try:
-            parsed = datetime.strptime(release_date, fmt)
-            return parsed >= datetime.now() - timedelta(days=days)
-        except (ValueError, TypeError):
-            continue
-    return False
+def _album_key(album_name: str, artist: str) -> str:
+    return f"{artist.strip().lower()}::{album_name.strip().lower()}"
 
 
 def collect_trending_albums(
-    client: SpotifyClient, countries: List[str], top_n: int
+    client: LastfmClient, countries: List[str], top_n: int
 ) -> List[Dict[str, Any]]:
     scores: Dict[str, float] = {}
     album_data: Dict[str, Dict[str, Any]] = {}
     sources: Dict[str, List[str]] = {}
 
-    # --- 1. Top 50 playlists: posición alta = más puntos --- #
     for country in countries:
-        playlist_id = TOP50_PLAYLISTS.get(country.upper())
-        if not playlist_id:
-            print(f"[aviso] No tengo playlist Top 50 configurada para '{country}', se omite.")
-            continue
-
-        print(f"Descargando Top 50 de {country}...")
+        print(f"Descargando top tracks de {country}...")
         try:
-            items = client.get_playlist_tracks(playlist_id, market=country.upper())
-        except Exception as exc:  # noqa: BLE001 - queremos seguir con los demás países
-            print(f"[error] Falló Top 50 de {country}: {exc}")
+            tracks = client.get_geo_top_tracks(country, limit=50)
+        except Exception as exc:  # noqa: BLE001 - seguimos con los demás países
+            print(f"[error] Falló geo.gettoptracks de {country}: {exc}")
             continue
 
-        for position, item in enumerate(items):
-            track = item.get("track")
-            if not track or not track.get("album"):
+        for position, track in enumerate(tracks[:TRACKS_TO_RESOLVE_PER_COUNTRY]):
+            artist_name = track.get("artist", {}).get("name") or track.get("artist", {}).get("#text")
+            track_name = track.get("name")
+            if not artist_name or not track_name:
                 continue
-            album = track["album"]
-            key = _album_key(album)
 
-            # Posición 0 (primer lugar) vale más que posición 49.
+            info = client.get_track_info(artist_name, track_name)
+            if not info or not info.get("album_name"):
+                continue  # esta canción no tiene álbum registrado en Last.fm
+
+            key = _album_key(info["album_name"], info["artist"])
             position_score = max(0.0, (50 - position) / 50 * 3.0)
             scores[key] = scores.get(key, 0.0) + position_score
 
             if key not in album_data:
-                album_data[key] = _normalize_album(album)
-            sources.setdefault(key, []).append(f"top50_{country.lower()}")
+                album_data[key] = {
+                    "id": key,
+                    "name": info["album_name"],
+                    "artists": [info["artist"]],
+                    "release_date": None,  # Last.fm no da esto en este flujo
+                    "cover_url": info["cover_url"],
+                    "source_url": info.get("url"),
+                }
+            sources.setdefault(key, []).append(f"lastfm_top_{country.lower()}")
 
-    # --- 2. New releases: bonus si es lanzamiento muy reciente --- #
-    for country in countries:
-        print(f"Descargando new releases de {country}...")
-        try:
-            new_releases = client.get_new_releases(country=country.upper(), limit=20)
-        except Exception as exc:  # noqa: BLE001
-            print(f"[error] Falló new-releases de {country}: {exc}")
-            continue
-
-        for album in new_releases:
-            key = _album_key(album)
-            if key not in album_data:
-                album_data[key] = _normalize_album(album)
-
-            if _is_recent(album.get("release_date", ""), RECENT_RELEASE_BONUS_DAYS):
-                scores[key] = scores.get(key, 0.0) + RECENT_RELEASE_BONUS_POINTS
-                sources.setdefault(key, []).append(f"new_release_{country.lower()}")
-
-    # --- 3. Rankear y devolver top N --- #
     ranked_keys = sorted(scores.keys(), key=lambda k: scores[k], reverse=True)
 
     results = []
@@ -152,6 +102,7 @@ def save_results(results: List[Dict[str, Any]], output_dir: str) -> str:
 
     payload = {
         "generated_at": datetime.now().isoformat(),
+        "source": "lastfm",
         "count": len(results),
         "albums": results,
     }
@@ -164,16 +115,16 @@ def save_results(results: List[Dict[str, Any]], output_dir: str) -> str:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Obtiene álbumes en tendencia en LatAm vía Spotify API."
+        description="Obtiene álbumes en tendencia en LatAm vía Last.fm API."
     )
     parser.add_argument(
-        "--top", type=int, default=5, help="Cuántos álbumes top devolver (default: 5, según el MVP)."
+        "--top", type=int, default=5, help="Cuántos álbumes top devolver (default: 5)."
     )
     parser.add_argument(
         "--countries",
         nargs="+",
-        default=["MX", "AR", "CO", "CL"],
-        help="Códigos de país a considerar (default: MX AR CO CL).",
+        default=["Mexico", "Argentina", "Colombia", "Chile"],
+        help="Nombres de país en inglés, como los espera Last.fm (default: Mexico Argentina Colombia Chile).",
     )
     parser.add_argument(
         "--output-dir",
@@ -182,11 +133,11 @@ def main():
     )
     args = parser.parse_args()
 
-    client = SpotifyClient()
+    client = LastfmClient()
     results = collect_trending_albums(client, args.countries, args.top)
 
     if not results:
-        print("No se obtuvo ningún álbum. Revisa credenciales/IDs de playlist.")
+        print("No se obtuvo ningún álbum. Revisa tu LASTFM_API_KEY.")
         return
 
     filepath = save_results(results, args.output_dir)
