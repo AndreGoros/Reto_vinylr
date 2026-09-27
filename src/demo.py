@@ -59,7 +59,7 @@ def get_albums(force_sample: bool) -> List[Dict[str, Any]]:
 
             print("[datos] Intentando obtener álbumes en tendencia vía Last.fm API...")
             client = LastfmClient()  # lanza LastfmAPIError si falta LASTFM_API_KEY
-            albums = collect_trending_albums(client, ["Mexico", "Argentina", "Colombia", "Chile"], top_n=5)
+            albums = collect_trending_albums(client, ["Mexico", "Argentina", "Colombia", "Chile"], top_n=2)
             if albums:
                 print(f"[datos] OK — {len(albums)} álbumes obtenidos de Last.fm en vivo.")
                 return albums
@@ -74,13 +74,19 @@ def get_albums(force_sample: bool) -> List[Dict[str, Any]]:
 # ------------------------------------------------------------------ #
 # PLAN A / PLAN B para la IMAGEN
 # ------------------------------------------------------------------ #
-def _try_real_template(album_a: Dict[str, Any], album_b: Dict[str, Any], dest_path: str) -> bool:
+def _try_real_template(
+    album_a: Dict[str, Any], album_b: Dict[str, Any], dest_path: str, template_env_var: str
+) -> bool:
     """Intenta generar la imagen con APITemplate.io. Devuelve True si tuvo éxito."""
     try:
         from template_client import TemplateClient
 
-        client = TemplateClient()  # lanza TemplateAPIError si faltan credenciales
-        url = client.create_duel_image(album_a, album_b)
+        client = TemplateClient()  # lanza TemplateAPIError si falta la API key
+        template_id = os.environ.get(template_env_var)
+        if not template_id:
+            print(f"  [imagen] Falta {template_env_var} en .env. Se usa el generador local.")
+            return False
+        url = client.create_duel_image(album_a, album_b, template_id=template_id)
         client.download_image(url, dest_path)
         return True
     except Exception as exc:  # noqa: BLE001
@@ -232,10 +238,10 @@ def main():
 
     for duel in duels:
         a, b = duel["album_a"], duel["album_b"]
-        print(f"--- Duelo de {duel['day'].upper()}: {a['name']} vs {b['name']} ---")
-        dest_path = os.path.join(output_dir, f"duelo_{duel['day']}.png")
+        print(f"--- Duelo [{duel['type']}] {duel['label']}: {a['name']} vs {b['name']} ---")
+        dest_path = os.path.join(output_dir, f"duelo_{duel['label']}.png")
 
-        used_real_api = _try_real_template(a, b, dest_path)
+        used_real_api = _try_real_template(a, b, dest_path, duel["template_env_var"])
         if not used_real_api:
             print("  [imagen] Generando versión local con Pillow (respaldo garantizado)...")
             generate_local_duel_image(a, b, dest_path)

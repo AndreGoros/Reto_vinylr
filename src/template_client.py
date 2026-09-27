@@ -37,19 +37,35 @@ class TemplateClient:
         self.api_key = api_key or os.environ.get("APITEMPLATE_API_KEY")
         self.template_id = template_id or os.environ.get("APITEMPLATE_TEMPLATE_ID")
 
-        if not self.api_key or not self.template_id:
+        if not self.api_key:
             raise TemplateAPIError(
-                "Faltan APITEMPLATE_API_KEY y/o APITEMPLATE_TEMPLATE_ID como "
-                "variables de entorno (ver .env.example)."
+                "Falta APITEMPLATE_API_KEY como variable de entorno (ver .env.example)."
             )
+        # Nota: self.template_id puede quedar vacío aquí a propósito — desde la
+        # Iteración 29 se puede pasar un template_id distinto en cada llamada a
+        # create_duel_image() (ej. una plantilla para duelos intra-país y otra
+        # para duelos cruzados), así que no siempre hace falta uno "global".
 
-    def create_duel_image(self, album_a: Dict[str, Any], album_b: Dict[str, Any]) -> str:
+    def create_duel_image(
+        self, album_a: Dict[str, Any], album_b: Dict[str, Any], template_id: Optional[str] = None
+    ) -> str:
         """
         Genera la imagen del duelo "Álbum A vs B" y devuelve la URL de descarga.
 
         album_a / album_b: dicts con al menos las llaves "name", "artists"
         (lista) y "cover_url", tal como los produce fetch_trending.py.
+
+        template_id: permite usar una plantilla distinta a la de `.env` para
+        esta llamada en particular (ej. una plantilla para duelos intra-país
+        #1 vs #2, y otra para duelos cruzados entre países — ver
+        generate_duels.py, Iteración 29). Si se omite, usa la de `.env`.
         """
+        effective_template_id = template_id or self.template_id
+        if not effective_template_id:
+            raise TemplateAPIError(
+                "No se especificó template_id (ni por parámetro ni por APITEMPLATE_TEMPLATE_ID en .env)."
+            )
+
         overrides = [
             {"name": "album_a_cover", "src": album_a["cover_url"]},
             {"name": "album_a_name", "text": album_a["name"]},
@@ -61,7 +77,7 @@ class TemplateClient:
 
         url = f"{API_BASE}/v2/create-image"
         headers = {"X-API-KEY": self.api_key, "Content-Type": "application/json"}
-        params = {"template_id": self.template_id}
+        params = {"template_id": effective_template_id}
         body = {"overrides": overrides}
 
         response = requests.post(url, headers=headers, params=params, json=body, timeout=30)
