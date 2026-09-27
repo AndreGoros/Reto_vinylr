@@ -1,0 +1,64 @@
+{
+  "note": "Dato de EJEMPLO para el Top 10 LatAm (src/demo.py). No proviene de una llamada real a Last.fm. Un solo post combinado, no uno por país.",
+  "posts": [
+    {
+      "country_param": "latam",
+      "country_name": "LatAm",
+      "accent_primary": "#4263FF",
+      "accent_secondary": "#FF3B7A",
+      "featured_cover_url": "https://picsum.photos/seed/vinylr_top10_latam/600/600",
+      "items": [
+        {
+          "rank": 1,
+          "artist": "Bad Bunny",
+          "title": "DTMF"
+        },
+        {
+          "rank": 2,
+          "artist": "Karol G",
+          "title": "Si Antes Te Hubiera Conocido"
+        },
+        {
+          "rank": 3,
+          "artist": "Feid",
+          "title": "Luna"
+        },
+        {
+          "rank": 4,
+          "artist": "Rauw Alejandro",
+          "title": "Touching the Sky"
+        },
+        {
+          "rank": 5,
+          "artist": "Shakira",
+          "title": "Soltera"
+        },
+        {
+          "rank": 6,
+          "artist": "Peso Pluma",
+          "title": "Lady Gaga"
+        },
+        {
+          "rank": 7,
+          "artist": "Grupo Frontera",
+          "title": "un x100to"
+        },
+        {
+          "rank": 8,
+          "artist": "Young Miko",
+          "title": "Classy 101"
+        },
+        {
+          "rank": 9,
+          "artist": "Tini",
+          "title": "Muñecas"
+        },
+        {
+          "rank": 10,
+          "artist": "Fuerza Regida",
+          "title": "Bebe Dame"
+        }
+      ]
+    }
+  ]
+}

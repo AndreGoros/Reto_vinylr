@@ -1,0 +1,243 @@
+<!--
+  duelo_template_split.html.j2  —  TEMPLATE B: "Bloques diagonales"
+  --------------------------------------------------------------------
+  Canvas 3:4 (1080x1440). Segunda variante de composición: la diagonal
+  vive en el FONDO (bloques de color rotados), nunca sobre las carátulas.
+  B es el más grande y arriba, A el más chico y abajo, con el vinilo
+  asomando detrás de A — invertido respecto al Template A, para que dos
+  duelos seguidos no se sientan iguales.
+
+  Variables Jinja2 esperadas: iguales a duelo_template.html.j2
+    album_a: { name, artists (list), cover_url, country (opcional) }
+    album_b: { name, artists (list), cover_url, country (opcional) }
+    year:    string/int, opcional, default 2026
+-->
+{% set country_accents = {
+  'Mexico': '#16855B',
+  'Argentina': '#36C5F0',
+  'Colombia': '#F4C430',
+  'Chile': '#E63946',
+} %}
+{% set country_a = album_a.country | default('', true) %}
+{% set country_b = album_b.country | default('', true) %}
+{% set accent_a = country_accents.get(country_a, '#4263FF') %}
+{% set accent_b = country_accents.get(country_b, '#C73E7D') %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<title>Vinylr — Duelo (Bloques diagonales)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Newsreader:ital,wght@0,400;0,500;1,400;1,500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --black:#050505; --white:#F5F5F3; --gray:#777777; --dark-gray:#202020;
+    --blue:#4263FF; --red:#E63946; --yellow:#F4C430; --green:#16855B;
+    --orange:#F27A30; --cyan:#36C5F0; --magenta:#C73E7D;
+    --sans:"Archivo Black","Arial Black","Helvetica Neue",sans-serif;
+    --serif:"Newsreader",Georgia,"Times New Roman",serif;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { width:1080px; height:1440px; background:var(--black); overflow:hidden; }
+
+  .canvas {
+    position:relative; width:1080px; height:1440px;
+    background:var(--black); color:var(--white); font-family:var(--serif);
+  }
+
+  /* ---------- fondo: bloques diagonales de color + blur, nunca sobre las carátulas ---------- */
+  .diagonal-block { position:absolute; width:1500px; height:400px; z-index:1; }
+  .diagonal-block-a { top:-90px; left:-320px; background:var(--accent-a); opacity:0.14; transform:rotate(-16deg); }
+  .diagonal-block-b { bottom:-120px; right:-320px; background:var(--accent-b); opacity:0.12; transform:rotate(-16deg); }
+  .backdrop { position:absolute; inset:0; overflow:hidden; z-index:0; }
+  .backdrop img {
+    position:absolute; width:760px; height:760px; object-fit:cover; border-radius:50%;
+  }
+  .backdrop .blob-a { top:460px; left:-300px; filter: blur(110px) saturate(1.3) brightness(0.4); }
+  .backdrop .blob-b { top:-240px; right:-280px; filter: blur(110px) saturate(1.3) brightness(0.42); }
+  .backdrop::after {
+    content:''; position:absolute; inset:0;
+    background:linear-gradient(180deg, rgba(5,5,5,0.5) 0%, rgba(5,5,5,0.2) 24%, rgba(5,5,5,0.28) 56%, rgba(5,5,5,0.88) 100%);
+  }
+
+  /* ---------- masthead editorial ---------- */
+  .masthead {
+    position:absolute; top:40px; left:56px; right:56px; z-index:20;
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .logo-mark {
+    width:28px; height:28px; border:1.5px solid var(--white);
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--sans); font-size:13px;
+  }
+  .wordmark { font-family:var(--sans); font-size:15px; letter-spacing:4px; }
+
+  .kicker {
+    position:absolute; top:102px; left:0; right:0; z-index:20; text-align:center;
+    font-family:var(--serif); font-style:italic; font-size:17px; letter-spacing:2px; color:var(--gray);
+  }
+  .headline {
+    position:absolute; top:136px; left:100px; right:100px; z-index:20; text-align:center;
+    font-family:var(--sans); font-size:37px; line-height:1.14; letter-spacing:0.5px;
+    text-transform:uppercase; color:var(--white);
+  }
+  .headline-rule {
+    position:absolute; top:202px; left:50%; transform:translateX(-50%);
+    width:56px; height:3px; background:var(--accent-b); z-index:20;
+  }
+
+  /* ---------- vinilo asomando detrás del álbum A (al revés que el Template A) ---------- */
+  .vinyl-peek {
+    position:absolute; z-index:11; width:340px; height:340px; border-radius:50%;
+    top:660px; left:8px;
+    background: radial-gradient(circle at 50% 50%, #101010 0 8%, #050505 8% 100%);
+    box-shadow:0 24px 48px rgba(0,0,0,0.6);
+  }
+  .vinyl-peek .grooves {
+    position:absolute; inset:0; border-radius:50%;
+    background: repeating-radial-gradient(circle at 50% 50%, rgba(255,255,255,0.08) 0px, rgba(255,255,255,0.08) 1px, transparent 1px, transparent 6px);
+    mix-blend-mode:overlay;
+  }
+  .vinyl-peek::before {
+    content:''; position:absolute; width:88px; height:88px; border-radius:50%;
+    top:50%; left:50%; transform:translate(-50%,-50%); background:var(--accent-a);
+  }
+  .vinyl-peek::after {
+    content:''; position:absolute; width:12px; height:12px; border-radius:50%;
+    top:50%; left:50%; transform:translate(-50%,-50%); background:var(--black);
+  }
+
+  /* ---------- carátulas: SIEMPRE completas, nunca recortadas ---------- */
+  .cover-frame {
+    position:absolute; z-index:10; background:var(--white); padding:12px;
+    box-shadow:0 26px 54px rgba(0,0,0,0.55), 0 8px 18px rgba(0,0,0,0.4);
+  }
+  .cover-frame img {
+    width:100%; height:100%; object-fit:contain; display:block; background:var(--black);
+  }
+  .cover-frame .tag {
+    position:absolute; top:-13px; left:18px; z-index:2;
+    font-family:var(--sans); font-size:10px; letter-spacing:2.5px;
+    color:var(--black); padding:4px 9px;
+  }
+  /* B más grande y arriba */
+  .cover-b { top:230px; right:36px; width:490px; height:490px; transform:rotate(3deg); }
+  .cover-b .tag { background:var(--accent-b); }
+  /* A más chico y abajo, se superpone sobre B */
+  .cover-a { top:640px; left:38px; width:400px; height:400px; transform:rotate(-4deg); z-index:12; }
+  .cover-a .tag { background:var(--accent-a); }
+
+  /* ---------- VS: marca aún más discreta, fuera del centro ---------- */
+  .vs-mark {
+    position:absolute; z-index:25; top:650px; left:426px;
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+  }
+  .vs-mark .line { width:1.5px; height:20px; background:var(--white); opacity:0.6; }
+  .vs-mark .circle {
+    width:68px; height:68px; border-radius:50%;
+    border:1.5px solid var(--white); background:rgba(5,5,5,0.65);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .vs-mark .circle span {
+    font-family:var(--serif); font-style:italic; font-weight:500; font-size:23px; letter-spacing:-1px;
+  }
+  .vs-mark .v { color:var(--white); }
+  .vs-mark .s { color:var(--blue); }
+
+  /* ---------- info de cada álbum ---------- */
+  .info-b { position:absolute; top:750px; right:40px; width:450px; z-index:20; text-align:right; }
+  .info-a { position:absolute; top:1060px; left:38px; width:400px; z-index:20; text-align:left; }
+  .album-name {
+    font-family:var(--sans); font-size:22px; line-height:1.14; text-transform:uppercase;
+    margin-bottom:7px;
+  }
+  .album-artist { font-family:var(--serif); font-style:italic; font-size:16px; color:var(--gray); }
+
+  /* ---------- línea editorial central ---------- */
+  .decide { position:absolute; top:1150px; left:0; right:0; z-index:20; text-align:center; }
+  .decide .rule { width:36px; height:1px; background:var(--gray); margin:0 auto 12px; }
+  .decide span { font-family:var(--serif); font-style:italic; font-size:18px; letter-spacing:3px; color:var(--gray); }
+
+  /* ---------- footer ---------- */
+  .footer-line { position:absolute; bottom:96px; left:56px; right:56px; height:1px; background:var(--accent-b); z-index:20; }
+  .footer-cta { position:absolute; bottom:58px; left:56px; z-index:20; font-family:var(--sans); font-size:13px; letter-spacing:2.5px; }
+  .footer-year { position:absolute; bottom:58px; right:56px; z-index:20; font-family:var(--serif); font-style:italic; font-size:16px; color:var(--gray); }
+
+  /* ---------- grano / marcas de imprenta ---------- */
+  .grain { position:absolute; inset:0; opacity:0.05; mix-blend-mode:overlay; pointer-events:none; z-index:50; }
+  .grain svg { width:100%; height:100%; display:block; }
+  .reg-mark { position:absolute; width:16px; height:16px; opacity:0.3; z-index:40; }
+  .reg-mark::before, .reg-mark::after { content:''; position:absolute; background:var(--gray); }
+  .reg-mark::before { top:50%; left:0; width:100%; height:1px; transform:translateY(-50%); }
+  .reg-mark::after  { left:50%; top:0; height:100%; width:1px; transform:translateX(-50%); }
+  .reg-tl { top:20px; left:20px; }
+  .reg-br { bottom:20px; right:20px; }
+</style>
+</head>
+<body>
+  <div class="canvas" style="--accent-a:{{ accent_a }}; --accent-b:{{ accent_b }};">
+
+    <div class="diagonal-block diagonal-block-a"></div>
+    <div class="diagonal-block diagonal-block-b"></div>
+    <div class="backdrop">
+      <img class="blob-a" src="{{ album_a.cover_url }}" alt="" onerror="this.style.display='none'" />
+      <img class="blob-b" src="{{ album_b.cover_url }}" alt="" onerror="this.style.display='none'" />
+    </div>
+
+    <div class="reg-mark reg-tl"></div>
+    <div class="reg-mark reg-br"></div>
+
+    <div class="masthead">
+      <div class="wordmark">VINYLR</div>
+      <div class="logo-mark">V</div>
+    </div>
+
+    <div class="kicker">Nuevo duelo</div>
+    <div class="headline">¿Cuál fue mejor?</div>
+    <div class="headline-rule"></div>
+
+    <div class="vinyl-peek"><div class="grooves"></div></div>
+
+    <div class="cover-frame cover-b">
+      <span class="tag">ÁLBUM B</span>
+      <img src="{{ album_b.cover_url }}" alt="" onerror="this.style.display='none'" />
+    </div>
+    <div class="cover-frame cover-a">
+      <span class="tag">ÁLBUM A</span>
+      <img src="{{ album_a.cover_url }}" alt="" onerror="this.style.display='none'" />
+    </div>
+
+    <div class="vs-mark">
+      <div class="line"></div>
+      <div class="circle"><span class="v">V</span><span class="s">S</span></div>
+      <div class="line"></div>
+    </div>
+
+    <div class="info-b">
+      <div class="album-name">{{ album_b.name }}</div>
+      <div class="album-artist">{{ album_b.artists|join(", ") }}</div>
+    </div>
+    <div class="info-a">
+      <div class="album-name">{{ album_a.name }}</div>
+      <div class="album-artist">{{ album_a.artists|join(", ") }}</div>
+    </div>
+
+    <div class="decide"><div class="rule"></div><span>TU TURNO</span></div>
+
+    <div class="footer-line"></div>
+    <div class="footer-cta">VINYLR — EL LETTERBOXD DE LA MÚSICA</div>
+    <div class="footer-year">{{ year|default("2026") }}</div>
+
+    <div class="grain">
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <filter id="noiseB3">
+          <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" stitchTiles="stitch"/>
+          <feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.5 0"/>
+        </filter>
+        <rect width="100%" height="100%" filter="url(#noiseB3)"/>
+      </svg>
+    </div>
+
+  </div>
+</body>
+</html>

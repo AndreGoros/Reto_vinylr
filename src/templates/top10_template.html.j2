@@ -1,0 +1,193 @@
+<!--
+  top10_template.html.j2
+  ------------------------
+  Plantilla del post "Top 10 [País]" — sistema visual Vinylr.
+
+  Variables Jinja2 esperadas:
+    country_name: string, ej. "México"
+    accent_primary: color hex del país, ej. "#E63946" (rojo)
+    accent_secondary: color hex secundario, ej. "#16855B" (verde)
+    featured_cover_url: carátula del #1 del ranking
+    items: lista de dicts { rank, artist, title } (se recomiendan 5-10)
+    year: opcional, default 2026
+
+  Reglas de marca (ver CONTEXTO visual Vinylr):
+  - El color del país es un TOQUE (línea, tab, dot), nunca un fondo plano.
+  - Fotografía siempre pasa por el wash duotono azul/negro, sin importar
+    el color original de la carátula.
+-->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<title>Vinylr — Top 10</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Newsreader:ital,wght@0,400;1,400;1,500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --black: #050505;
+    --white: #F5F5F3;
+    --gray: #777777;
+    --dark-gray: #202020;
+    --blue: #4263FF;
+    --accent: {{ accent_primary|default("#E63946") }};
+    --accent-2: {{ accent_secondary|default("#16855B") }};
+    --sans: "Archivo Black", "Arial Black", "Helvetica Neue", sans-serif;
+    --serif: "Newsreader", Georgia, "Times New Roman", serif;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { width:1080px; height:1080px; background:var(--black); overflow:hidden; }
+
+  .canvas {
+    position:relative; width:1080px; height:1080px;
+    background:var(--black); color:var(--white); font-family:var(--serif);
+  }
+
+  .grain { position:absolute; inset:0; opacity:0.05; mix-blend-mode:overlay; pointer-events:none; z-index:50; }
+  .grain svg { width:100%; height:100%; display:block; }
+
+  .reg-mark { position:absolute; width:18px; height:18px; opacity:0.35; z-index:40; }
+  .reg-mark::before, .reg-mark::after { content:''; position:absolute; background:var(--gray); }
+  .reg-mark::before { top:50%; left:0; width:100%; height:1px; transform:translateY(-50%); }
+  .reg-mark::after  { left:50%; top:0; height:100%; width:1px; transform:translateX(-50%); }
+  .reg-tl { top:24px; left:24px; }
+  .reg-br { bottom:24px; right:24px; }
+
+  .topbar {
+    position:absolute; top:32px; left:72px; right:72px;
+    display:flex; justify-content:space-between; align-items:center; z-index:30;
+  }
+  .logo-mark {
+    width:34px; height:34px; border:1.5px solid var(--white);
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--sans); font-size:16px;
+  }
+  .wordmark { font-family:var(--sans); font-size:18px; letter-spacing:5px; }
+
+  /* tab de país: único lugar donde el color nacional se ve "sólido" */
+  .country-tab {
+    position:absolute; top:32px; left:130px;
+    width:24px; height:13px; background:var(--accent); z-index:31;
+  }
+  .country-tab::after {
+    content:''; position:absolute; left:100%; top:0; width:9px; height:13px; background:var(--accent-2);
+  }
+
+  .country-name {
+    position:absolute; top:92px; left:72px; z-index:20;
+    font-family:var(--sans); font-size:78px; line-height:0.92;
+    text-transform:uppercase; letter-spacing:-1px;
+  }
+  .top10-tag {
+    position:absolute; top:168px; left:78px; z-index:15;
+    font-family:var(--sans); font-size:98px; line-height:0.9;
+    text-transform:uppercase; color:transparent;
+    -webkit-text-stroke:1.5px var(--gray);
+    letter-spacing:-2px;
+  }
+  .accent-line {
+    position:absolute; top:274px; left:72px; width:160px; height:4px; background:var(--accent); z-index:20;
+  }
+
+  .cover-frame {
+    position:absolute; top:302px; right:110px;
+    width:230px; height:230px; transform:rotate(3deg);
+    box-shadow:0 25px 50px rgba(0,0,0,0.65); overflow:hidden; z-index:12;
+    background:var(--dark-gray);
+  }
+  .cover-frame img {
+    width:100%; height:100%; object-fit:cover; display:block;
+    filter:grayscale(0.6) contrast(1.05) brightness(1.05);
+  }
+  .cover-frame .wash {
+    position:absolute; inset:0;
+    background:linear-gradient(155deg, rgba(66,99,255,0.28), rgba(0,0,0,0) 75%);
+    mix-blend-mode:multiply;
+  }
+
+  .vinyl-wrap { position:absolute; top:382px; right:390px; width:150px; height:150px; z-index:10; }
+  .vinyl {
+    width:100%; height:100%; border-radius:50%; position:relative;
+    background:
+      radial-gradient(circle at 42% 38%, rgba(255,255,255,0.10), rgba(255,255,255,0) 40%),
+      repeating-radial-gradient(circle at 50% 50%, rgba(255,255,255,0.045) 0px, rgba(255,255,255,0.045) 1px, transparent 1px, transparent 5px),
+      radial-gradient(circle at 50% 50%, #0e0e0e 0 9%, #050505 9% 100%);
+    box-shadow:0 16px 32px rgba(0,0,0,0.6);
+  }
+  .vinyl::before {
+    content:''; position:absolute; width:50px; height:50px; border-radius:50%;
+    top:50%; left:50%; transform:translate(-50%,-50%); background:var(--accent);
+  }
+  .vinyl::after {
+    content:''; position:absolute; width:6px; height:6px; border-radius:50%;
+    top:50%; left:50%; transform:translate(-50%,-50%); background:var(--black);
+  }
+
+  .list {
+    position:absolute; top:560px; left:72px; right:72px; z-index:20;
+  }
+  .list-row {
+    display:flex; align-items:baseline; gap:22px;
+    padding:9px 0; border-bottom:1px solid var(--dark-gray);
+  }
+  .list-row:first-child { border-top:1px solid var(--dark-gray); }
+  .rank {
+    font-family:var(--serif); font-style:italic; font-size:19px; color:var(--gray); width:36px;
+  }
+  .track-artist { font-family:var(--sans); font-size:18px; text-transform:uppercase; }
+  .track-title { font-family:var(--serif); font-style:italic; font-size:15px; color:var(--gray); margin-left:auto; text-align:right; }
+
+  .footer-line { position:absolute; bottom:58px; left:72px; right:72px; height:1px; background:var(--blue); z-index:20; }
+  .footer-cta { position:absolute; bottom:30px; left:72px; z-index:20; font-family:var(--sans); font-size:13px; letter-spacing:3px; }
+  .footer-year { position:absolute; bottom:30px; right:72px; z-index:20; font-family:var(--serif); font-style:italic; font-size:16px; color:var(--gray); }
+</style>
+</head>
+<body>
+  <div class="canvas">
+
+    <div class="reg-mark reg-tl"></div>
+    <div class="reg-mark reg-br"></div>
+
+    <div class="topbar">
+      <div class="logo-mark">V</div>
+      <div class="wordmark">VINYLR</div>
+    </div>
+    <div class="country-tab"></div>
+
+    <div class="country-name">{{ country_name }}</div>
+    <div class="top10-tag">TOP 10</div>
+    <div class="accent-line"></div>
+
+    <div class="cover-frame">
+      <img src="{{ featured_cover_url }}" alt="" onerror="this.style.display='none'" />
+      <div class="wash"></div>
+    </div>
+    <div class="vinyl-wrap"><div class="vinyl"></div></div>
+
+    <div class="list">
+      {% for item in items %}
+      <div class="list-row">
+        <div class="rank">{{ "%02d"|format(item.rank) }}</div>
+        <div class="track-artist">{{ item.artist }}</div>
+        <div class="track-title">{{ item.title }}</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div class="footer-line"></div>
+    <div class="footer-cta">VINYLR — EL LETTERBOXD DE LA MÚSICA</div>
+    <div class="footer-year">{{ year|default("2026") }}</div>
+
+    <div class="grain">
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <filter id="noiseB">
+          <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" stitchTiles="stitch"/>
+          <feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.5 0"/>
+        </filter>
+        <rect width="100%" height="100%" filter="url(#noiseB)"/>
+      </svg>
+    </div>
+
+  </div>
+</body>
+</html>
