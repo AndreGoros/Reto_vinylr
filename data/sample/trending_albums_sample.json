@@ -1,57 +1,124 @@
 {
-  "generated_at": "2026-09-23T00:00:00",
-  "note": "Datos de EJEMPLO para el modo demo (src/demo.py). No provienen de una llamada real a Spotify. Se usan como respaldo cuando no hay credenciales configuradas o no hay conexión a internet, para que el demo nunca falle.",
-  "count": 5,
+  "generated_at": "2026-09-26T00:00:00",
+  "note": "Datos de ejemplo con portadas oficiales reales para México, Argentina, Colombia y Chile.",
+  "by_country": {
+    "Mexico": [
+      {
+        "id": "mex_1",
+        "name": "ÉXODO",
+        "artists": ["Peso Pluma"],
+        "release_date": "2024-06-20",
+        "cover_url": "https://upload.wikimedia.org/wikipedia/en/e/e6/Peso_Pluma_-_%C3%89xodo.png",
+        "trend_score": 14.8,
+        "country": "Mexico"
+      },
+      {
+        "id": "mex_2",
+        "name": "Nadie Sabe Lo Que Va a Pasar Mañana",
+        "artists": ["Bad Bunny"],
+        "release_date": "2023-10-13",
+        "cover_url": "https://upload.wikimedia.org/wikipedia/en/7/7b/Bad_Bunny_-_Nadie_Sabe_Lo_Que_Va_a_Pasar_Ma%C3%B1ana.png",
+        "trend_score": 12.5,
+        "country": "Mexico"
+      }
+    ],
+    "Argentina": [
+      {
+        "id": "arg_1",
+        "name": "Ameri",
+        "artists": ["Duki"],
+        "release_date": "2024-10-31",
+        "cover_url": "https://upload.wikimedia.org/wikipedia/en/f/f6/Duki_-_Ameri.png",
+        "trend_score": 14.1,
+        "country": "Argentina"
+      },
+      {
+        "id": "arg_2",
+        "name": "BAÑO MARÍA",
+        "artists": ["CA7RIEL & Paco Amoroso"],
+        "release_date": "2024-04-18",
+        "cover_url": "https://upload.wikimedia.org/wikipedia/en/d/da/Ca7riel_and_Paco_Amoroso_-_Ba%C3%B1o_Mar%C3%ADa.png",
+        "trend_score": 11.9,
+        "country": "Argentina"
+      }
+    ],
+    "Colombia": [
+      {
+        "id": "col_1",
+        "name": "Mañana Será Bonito",
+        "artists": ["Karol G"],
+        "release_date": "2023-02-24",
+        "cover_url": "https://upload.wikimedia.org/wikipedia/en/7/77/Karol_G_-_Ma%C3%B1ana_Ser%C3%A1_Bonito.png",
+        "trend_score": 13.9,
+        "country": "Colombia"
+      },
+      {
+        "id": "col_2",
+        "name": "FERXXOCALIPSIS",
+        "artists": ["Feid"],
+        "release_date": "2023-12-01",
+        "cover_url": "https://upload.wikimedia.org/wikipedia/en/b/b3/Feid_-_Ferxxocalipsis.png",
+        "trend_score": 12.2,
+        "country": "Colombia"
+      }
+    ],
+    "Chile": [
+      {
+        "id": "chi_1",
+        "name": "El Mal Menor",
+        "artists": ["Cris Mj"],
+        "release_date": "2024-04-05",
+        "cover_url": "https://lastfm.freetls.fastly.net/i/u/500x500/2a96cbd8b46e442fc41c2b86b821562f.png",
+        "trend_score": 13.5,
+        "country": "Chile"
+      },
+      {
+        "id": "chi_2",
+        "name": "Giro 180",
+        "artists": ["FloyyMenor"],
+        "release_date": "2024-08-09",
+        "cover_url": "https://lastfm.freetls.fastly.net/i/u/500x500/c42247b937667e41fa80c85418b760a0.png",
+        "trend_score": 11.4,
+        "country": "Chile"
+      }
+    ]
+  },
   "albums": [
     {
-      "spotify_id": "sample_1",
-      "name": "Debí Tirar Más Fotos",
-      "artists": ["Bad Bunny"],
-      "release_date": "2025-01-05",
-      "cover_url": "https://picsum.photos/seed/vinylr1/600/600",
-      "spotify_url": "https://open.spotify.com/",
-      "trend_score": 14.2,
-      "sources": ["sample_data"]
+      "id": "mex_1",
+      "name": "ÉXODO",
+      "artists": ["Peso Pluma"],
+      "release_date": "2024-06-20",
+      "cover_url": "https://upload.wikimedia.org/wikipedia/en/e/e6/Peso_Pluma_-_%C3%89xodo.png",
+      "trend_score": 14.8,
+      "sources": ["lastfm_top_mexico"]
     },
     {
-      "spotify_id": "sample_2",
+      "id": "arg_1",
+      "name": "Ameri",
+      "artists": ["Duki"],
+      "release_date": "2024-10-31",
+      "cover_url": "https://upload.wikimedia.org/wikipedia/en/f/f6/Duki_-_Ameri.png",
+      "trend_score": 14.1,
+      "sources": ["lastfm_top_argentina"]
+    },
+    {
+      "id": "col_1",
       "name": "Mañana Será Bonito",
       "artists": ["Karol G"],
       "release_date": "2023-02-24",
-      "cover_url": "https://picsum.photos/seed/vinylr2/600/600",
-      "spotify_url": "https://open.spotify.com/",
-      "trend_score": 12.8,
-      "sources": ["sample_data"]
+      "cover_url": "https://upload.wikimedia.org/wikipedia/en/7/77/Karol_G_-_Ma%C3%B1ana_Ser%C3%A1_Bonito.png",
+      "trend_score": 13.9,
+      "sources": ["lastfm_top_colombia"]
     },
     {
-      "spotify_id": "sample_3",
-      "name": "Vice Versa",
-      "artists": ["Feid"],
-      "release_date": "2023-04-27",
-      "cover_url": "https://picsum.photos/seed/vinylr3/600/600",
-      "spotify_url": "https://open.spotify.com/",
-      "trend_score": 10.5,
-      "sources": ["sample_data"]
-    },
-    {
-      "spotify_id": "sample_4",
-      "name": "DATA",
-      "artists": ["Tainy"],
-      "release_date": "2023-05-25",
-      "cover_url": "https://picsum.photos/seed/vinylr4/600/600",
-      "spotify_url": "https://open.spotify.com/",
-      "trend_score": 9.1,
-      "sources": ["sample_data"]
-    },
-    {
-      "spotify_id": "sample_5",
-      "name": "Cosa Nuestra",
-      "artists": ["Rauw Alejandro"],
-      "release_date": "2023-07-13",
-      "cover_url": "https://picsum.photos/seed/vinylr5/600/600",
-      "spotify_url": "https://open.spotify.com/",
-      "trend_score": 8.4,
-      "sources": ["sample_data"]
+      "id": "chi_1",
+      "name": "El Mal Menor",
+      "artists": ["Cris Mj"],
+      "release_date": "2024-04-05",
+      "cover_url": "https://lastfm.freetls.fastly.net/i/u/500x500/2a96cbd8b46e442fc41c2b86b821562f.png",
+      "trend_score": 13.5,
+      "sources": ["lastfm_top_chile"]
     }
   ]
 }
