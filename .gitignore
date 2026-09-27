@@ -1,0 +1,23 @@
+# Entornos virtuales de Python — nunca se suben, son binarios locales.
+venv/
+.venv/
+env/
+ENV/
+
+# Cache de Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Credenciales — NUNCA subir esto a git (usa .env.example como plantilla).
+.env
+
+# Salidas generadas por el pipeline y el demo — no son código fuente.
+data/generated/
+data/demo_output/
+data/test_output/
+data/*.json
+
+# Archivos de sistema / editor
+.DS_Store
+Thumbs.db

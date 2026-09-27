@@ -474,6 +474,95 @@ El enfoque de "Spotify API con Client Credentials Flow" para detectar tendencias
 
 ---
 
+## Iteración 28 — Cambio de "ranking global mezclado" a "un álbum representativo por país"
+
+**Fecha:** 2026-09-23
+**Contexto:** El usuario corrió el demo con Last.fm ya en vivo y funcionó (5 álbumes obtenidos), pero notó resultados algo dispares/poco coherentes culturalmente entre sí (ej. un título que suena a K-pop junto a un track en inglés) — síntoma de que el ranking anterior mezclaba las 4 listas de países en un solo score global, dejando que un país "dominara" el resultado si sus canciones puntuaban más alto por posición, sin garantizar representación de cada país.
+
+### Cambio
+Se reescribe `collect_trending_albums()`: en vez de acumular un score combinado entre países y sacar un top-N global, ahora se toma **el álbum mejor posicionado de CADA país por separado**, devolviendo la lista en el mismo orden en que se pasan los países (por defecto: México, Argentina, Colombia, Chile). Esto además encaja perfecto con la lógica ya existente de `build_duels()` en `generate_duels.py` (que empareja posiciones 0vs1 para Lunes y 2vs3 para Viernes) sin tener que tocar ese archivo: con el orden por defecto, el duelo de Lunes queda México vs Argentina, y el de Viernes Colombia vs Chile.
+
+### Estado al cierre de esta iteración
+- [x] `collect_trending_albums()` reescrito: un álbum representativo por país, en vez de un ranking global mezclado.
+- [x] Con el orden default de países (México, Argentina, Colombia, Chile), el emparejamiento de `build_duels()` (que no se tocó) da: **Lunes = México vs Argentina**, **Viernes = Colombia vs Chile** — cambiar el orden de `--countries` cambia qué países se enfrentan.
+- **COMPLETA.** No se cortó por límite de tokens.
+
+### Pendiente
+- [ ] Confirmar con una corrida real que el resultado se sienta más coherente que el anterior (el usuario ya detectó el problema con datos reales, así que su siguiente corrida es la prueba real de este fix).
+
+---
+
+## Iteración 29 — Nuevo plan: 2 tipos de duelo (intra-país #1vs#2, y cruce entre países específicos)
+
+**Fecha:** 2026-09-23
+**Nuevo plan del usuario:**
+1. **Duelo intra-país:** el #1 vs el #2 de tendencias de CADA país (una plantilla dedicada a este formato).
+2. **Duelo cruzado entre países específicos:** México vs Colombia, y Argentina vs Chile (ya no México vs Argentina / Colombia vs Chile como en la Iteración 28) — con una plantilla distinta a la del duelo intra-país.
+
+Esto requiere 2 plantillas distintas en APITemplate.io (una para cada tipo de duelo), y que el pipeline sepa cuál usar según el tipo.
+
+### Qué se está construyendo
+1. `fetch_trending.py` — `collect_trending_albums()` ahora trae el **top 2** de cada país (no solo el #1), cada álbum etiquetado con `country` y `rank` (1 o 2).
+2. `generate_duels.py` — se reescribe `build_duels()` para generar 2 tipos de duelo:
+   - Intra-país: `{país}_1_vs_2` para cada país que tenga ambos rangos resueltos.
+   - Cruzado: México(#1) vs Colombia(#1), Argentina(#1) vs Chile(#1).
+   Cada duelo indica qué variable de entorno de plantilla usar.
+3. `template_client.py` — `create_duel_image()` acepta un `template_id` específico por llamada (en vez de solo el de `.env` fijo), para poder usar 2 plantillas distintas.
+4. `.env.example` — se agregan `APITEMPLATE_TEMPLATE_ID_COUNTRY` y `APITEMPLATE_TEMPLATE_ID_CROSS` (reemplazan al único `APITEMPLATE_TEMPLATE_ID` de antes).
+5. `demo.py` — se actualiza para reflejar la misma estructura de duelos (ya no depende del campo `day` que existía antes).
+
+### Nota sobre la cadencia (a confirmar con el usuario, no asumida)
+Esto genera hasta 6 duelos por semana (4 intra-país + 2 cruzados) — más que los 2 slots de Lunes/Viernes de la propuesta original. Se deja como responsabilidad de la revisión humana decidir cuáles de estos se publican y en qué día, en vez de forzar una asignación automática de día — se le señala esto al usuario en el chat.
+
+### Estado al cierre de esta iteración
+- [x] `fetch_trending.py` — ahora trae top 2 por país, con `country`/`rank` en cada álbum.
+- [x] `template_client.py` — `create_duel_image()` acepta `template_id` por llamada.
+- [x] `generate_duels.py` — reescrito: arma duelos intra-país (#1 vs #2) + duelos cruzados (México vs Colombia, Argentina vs Chile), cada uno con su propia plantilla.
+- [x] `demo.py` — actualizado a la nueva estructura de duelos (`label`/`type` en vez de `day`).
+- [x] `data/sample/trending_albums_sample.json` — reescrito con `country`/`rank` (8 álbumes: 2 por país) para que el demo siga funcionando con la nueva lógica.
+- [x] `.env.example` y `weekly_content.yml` actualizados con `APITEMPLATE_TEMPLATE_ID_COUNTRY` y `APITEMPLATE_TEMPLATE_ID_CROSS` (reemplazan al único `APITEMPLATE_TEMPLATE_ID`).
+- **COMPLETA.** No se cortó por límite de tokens.
+
+### Pendiente
+- [ ] El usuario necesita diseñar/tener lista la SEGUNDA plantilla en APITemplate.io (la de duelo intra-país #1 vs #2) — hasta ahora solo tenía la de "Álbum A vs B" genérica, que ahora se usa para el duelo cruzado (`APITEMPLATE_TEMPLATE_ID_CROSS`).
+- [ ] Probar con datos reales de Last.fm que se logren resolver 2 álbumes distintos por país (no solo 1) — esto es más exigente que antes, ya que ahora se necesita que Last.fm tenga álbum registrado para al menos 2 canciones distintas del top de cada país.
+- [ ] La plantilla que ya existía (`Post_vs`, revisada en la Iteración 22) ahora corresponde a `APITEMPLATE_TEMPLATE_ID_CROSS` — confirmar con el usuario que así lo entendió.
+
+---
+
+## Iteración 30 — 6 fondos de diseño distintos (uno por país + uno por par cruzado) → 6 plantillas, no 2
+
+**Fecha:** 2026-09-23
+**Contexto:** El usuario compartió 6 imágenes de fondo ya diseñadas (estética "vinilo", serie "V — Música Cultura Latinoamérica"): `Mex.png`, `Col.png`, `Arg.png`, `Chile.png` (fondos individuales, para los duelos intra-país) y `Mex-Col.png`, `Arg-Chil.png` (fondos combinados, para los duelos cruzados). Esto cambia el esquema de 2 plantillas genéricas (Iteración 29) a **6 plantillas específicas**, una por fondo.
+
+### Cambio
+`generate_duels.py` ya no usa 2 constantes fijas (`APITEMPLATE_TEMPLATE_ID_COUNTRY` / `_CROSS`) — ahora calcula el nombre de la variable de entorno dinámicamente según el país (o par de países) del duelo:
+- Intra-país: `APITEMPLATE_TEMPLATE_ID_{PAÍS}` → ej. `APITEMPLATE_TEMPLATE_ID_MEXICO`
+- Cruzado: `APITEMPLATE_TEMPLATE_ID_{PAÍS_A}_{PAÍS_B}` → ej. `APITEMPLATE_TEMPLATE_ID_MEXICO_COLOMBIA`, `APITEMPLATE_TEMPLATE_ID_ARGENTINA_CHILE`
+
+### Estado al cierre de esta iteración
+- [x] `generate_duels.py` — nombre de variable de entorno calculado dinámicamente por país/par (6 posibles en vez de 2 fijas).
+- [x] `.env.example` y `weekly_content.yml` actualizados con las 6 variables.
+- [x] `demo.py` no necesitó cambios (ya usaba el nombre de variable de forma genérica desde la Iteración 29).
+- **COMPLETA.**
+
+---
+
+## Iteración 31 — Script de prueba: generar UNA sola imagen (cuidar la cuota gratis de 50/mes)
+
+**Fecha:** 2026-09-23
+**Por qué:** Correr `generate_duels.py` completo genera 6 imágenes de golpe — bien para producción semanal, pero desperdicia cuota si solo se quiere probar que UNA plantilla específica se ve bien (ej. después de ajustar el diseño de la plantilla de México en el editor). Con 50 imágenes/mes gratis, cada prueba cuenta.
+
+### Qué se está construyendo
+`src/test_single_image.py` — reutiliza la lógica ya existente de `build_duels()` (no duplica código de emparejamiento), pero solo genera la imagen de UN duelo específico, elegido por el usuario (`--template mexico`, `--template mexico_colombia`, etc.). Por defecto usa los datos de ejemplo (no gasta llamadas a Last.fm tampoco), con la opción `--live` para usar datos reales si se quiere.
+
+### Estado al cierre de esta iteración
+- [x] `src/test_single_image.py` creado — genera 1 sola imagen, elegida por `--template`, usando datos de ejemplo por defecto (`--live` para datos reales).
+- [x] `.gitignore` actualizado con `data/test_output/`.
+- **COMPLETA.**
+
+---
+
 ## Iteración 19 — El venv no existe en esta carpeta (era de otra ruta distinta)
 
 **Fecha:** 2026-09-23

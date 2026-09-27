@@ -6,7 +6,12 @@
 #   Settings → Secrets and variables → Actions → New repository secret
 #     - LASTFM_API_KEY
 #     - APITEMPLATE_API_KEY
-#     - APITEMPLATE_TEMPLATE_ID
+#     - APITEMPLATE_TEMPLATE_ID_MEXICO
+#     - APITEMPLATE_TEMPLATE_ID_ARGENTINA
+#     - APITEMPLATE_TEMPLATE_ID_COLOMBIA
+#     - APITEMPLATE_TEMPLATE_ID_CHILE
+#     - APITEMPLATE_TEMPLATE_ID_MEXICO_COLOMBIA
+#     - APITEMPLATE_TEMPLATE_ID_ARGENTINA_CHILE
 #
 # También se puede correr manualmente desde la pestaña "Actions" del repo
 # (botón "Run workflow"), sin esperar al cron, útil para pruebas.
@@ -40,13 +45,18 @@ jobs:
         working-directory: src
         env:
           LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
-        run: python fetch_trending.py --top 5 --countries Mexico Argentina Colombia Chile
+        run: python fetch_trending.py --top 2 --countries Mexico Argentina Colombia Chile
 
       - name: Generar imágenes de los duelos (APITemplate.io)
         working-directory: src
         env:
           APITEMPLATE_API_KEY: ${{ secrets.APITEMPLATE_API_KEY }}
-          APITEMPLATE_TEMPLATE_ID: ${{ secrets.APITEMPLATE_TEMPLATE_ID }}
+          APITEMPLATE_TEMPLATE_ID_MEXICO: ${{ secrets.APITEMPLATE_TEMPLATE_ID_MEXICO }}
+          APITEMPLATE_TEMPLATE_ID_ARGENTINA: ${{ secrets.APITEMPLATE_TEMPLATE_ID_ARGENTINA }}
+          APITEMPLATE_TEMPLATE_ID_COLOMBIA: ${{ secrets.APITEMPLATE_TEMPLATE_ID_COLOMBIA }}
+          APITEMPLATE_TEMPLATE_ID_CHILE: ${{ secrets.APITEMPLATE_TEMPLATE_ID_CHILE }}
+          APITEMPLATE_TEMPLATE_ID_MEXICO_COLOMBIA: ${{ secrets.APITEMPLATE_TEMPLATE_ID_MEXICO_COLOMBIA }}
+          APITEMPLATE_TEMPLATE_ID_ARGENTINA_CHILE: ${{ secrets.APITEMPLATE_TEMPLATE_ID_ARGENTINA_CHILE }}
         run: python generate_duels.py
 
       - name: Subir resultados para revisión humana
