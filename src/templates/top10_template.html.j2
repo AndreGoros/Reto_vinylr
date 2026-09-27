@@ -36,10 +36,10 @@
     --serif: "Newsreader", Georgia, "Times New Roman", serif;
   }
   * { margin:0; padding:0; box-sizing:border-box; }
-  html, body { width:1080px; height:1080px; background:var(--black); overflow:hidden; }
+  html, body { width:1080px; height:1440px; background:var(--black); overflow:hidden; }
 
   .canvas {
-    position:relative; width:1080px; height:1080px;
+    position:relative; width:1080px; height:1440px;
     background:var(--black); color:var(--white); font-family:var(--serif);
   }
 
@@ -124,18 +124,18 @@
   }
 
   .list {
-    position:absolute; top:560px; left:72px; right:72px; z-index:20;
+    position:absolute; top:600px; left:72px; right:72px; z-index:20;
   }
   .list-row {
-    display:flex; align-items:baseline; gap:22px;
-    padding:9px 0; border-bottom:1px solid var(--dark-gray);
+    display:flex; align-items:baseline; gap:24px;
+    padding:19px 0; border-bottom:1px solid var(--dark-gray);
   }
   .list-row:first-child { border-top:1px solid var(--dark-gray); }
   .rank {
-    font-family:var(--serif); font-style:italic; font-size:19px; color:var(--gray); width:36px;
+    font-family:var(--serif); font-style:italic; font-size:21px; color:var(--gray); width:40px;
   }
-  .track-artist { font-family:var(--sans); font-size:18px; text-transform:uppercase; }
-  .track-title { font-family:var(--serif); font-style:italic; font-size:15px; color:var(--gray); margin-left:auto; text-align:right; }
+  .track-artist { font-family:var(--sans); font-size:20px; text-transform:uppercase; }
+  .track-title { font-family:var(--serif); font-style:italic; font-size:16px; color:var(--gray); margin-left:auto; text-align:right; }
 
   .footer-line { position:absolute; bottom:58px; left:72px; right:72px; height:1px; background:var(--blue); z-index:20; }
   .footer-cta { position:absolute; bottom:30px; left:72px; z-index:20; font-family:var(--sans); font-size:13px; letter-spacing:3px; }
