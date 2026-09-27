@@ -1,20 +1,30 @@
 <!--
   top10_template.html.j2
   ------------------------
-  Plantilla del post "Top 10 [País]" — sistema visual Vinylr.
+  Plantilla del post "Top 10 [País/Región]" — sistema visual Vinylr.
 
-  Variables Jinja2 esperadas:
-    country_name: string, ej. "México"
-    accent_primary: color hex del país, ej. "#E63946" (rojo)
-    accent_secondary: color hex secundario, ej. "#16855B" (verde)
-    featured_cover_url: carátula del #1 del ranking
+  REDISEÑO (ver brief "VINYLR — CORRECCIÓN DEL TEMPLATE TOP 10"): la
+  versión anterior se sentía tabla/dashboard. Esta versión invierte la
+  jerarquía a CARÁTULA -> CANCIÓN -> ARTISTA -> RANKING, trata el #1 como
+  hero editorial (35-50% del lienzo), y da variación visual real a las
+  posiciones 2-10 en vez de 9 filas idénticas.
+
+  Variables Jinja2 esperadas (SIN CAMBIOS respecto a la versión anterior):
+    country_name: string, ej. "LatAm" o "México"
+    accent_primary: color hex, ej. "#4263FF"
+    accent_secondary: color hex, ej. "#FF3B7A"
+    featured_cover_url: carátula del #1 del ranking (puede venir vacía "")
     items: lista de dicts { rank, artist, title } (se recomiendan 5-10)
     year: opcional, default 2026
 
-  Reglas de marca (ver CONTEXTO visual Vinylr):
-  - El color del país es un TOQUE (línea, tab, dot), nunca un fondo plano.
-  - Fotografía siempre pasa por el wash duotono azul/negro, sin importar
-    el color original de la carátula.
+  Decisión de diseño importante (relajamos UNA regla del sistema visual
+  anterior a propósito, porque el nuevo brief lo pide explícitamente):
+  la carátula del HERO ya NO lleva el wash duotono azul/negro — se
+  muestra a color completo (object-fit: contain, sin recortes) porque el
+  brief pide que el color de las carátulas sea protagonista. El wash
+  duotono se sigue usando, pero solo en la versión MUY difuminada que
+  arma el fondo atmosférico (bg-photo), nunca sobre la carátula nítida.
+  Los templates de duelo NO se tocaron y siguen con el wash normal.
 -->
 <!DOCTYPE html>
 <html lang="es">
@@ -30,8 +40,8 @@
     --gray: #777777;
     --dark-gray: #202020;
     --blue: #4263FF;
-    --accent: {{ accent_primary|default("#E63946") }};
-    --accent-2: {{ accent_secondary|default("#16855B") }};
+    --accent: {{ accent_primary|default("#4263FF") }};
+    --accent-2: {{ accent_secondary|default("#FF3B7A") }};
     --sans: "Archivo Black", "Arial Black", "Helvetica Neue", sans-serif;
     --serif: "Newsreader", Georgia, "Times New Roman", serif;
   }
@@ -39,144 +49,245 @@
   html, body { width:1080px; height:1440px; background:var(--black); overflow:hidden; }
 
   .canvas {
-    position:relative; width:1080px; height:1440px;
+    position:relative; width:1080px; height:1440px; overflow:hidden;
     background:var(--black); color:var(--white); font-family:var(--serif);
+    display:flex; flex-direction:column;
+    padding:36px 64px 26px;
   }
 
-  .grain { position:absolute; inset:0; opacity:0.05; mix-blend-mode:overlay; pointer-events:none; z-index:50; }
+  /* ---------- fondo atmosférico: color derivado de la carátula #1 ---------- */
+  /* Capa 1: siempre presente, un resplandor de color hecho SOLO con los
+     acentos de marca/país que vienen por Jinja (nunca inventa color). */
+  .bg-glow {
+    position:absolute; inset:0; z-index:0;
+    background:
+      radial-gradient(ellipse 60% 40% at 22% 12%, var(--accent), transparent 62%),
+      radial-gradient(ellipse 55% 42% at 88% 92%, var(--accent-2), transparent 60%);
+    opacity:0.32; mix-blend-mode:screen;
+  }
+  /* Capa 2: la MISMA carátula del #1, ampliada y desenfocada -> el color
+     real del artwork se convierte en el ambiente de toda la pieza. Si la
+     imagen no carga, onerror la oculta y solo queda la Capa 1 (nunca se
+     rompe el fondo). */
+  .bg-photo { position:absolute; inset:-60px; z-index:1; overflow:hidden; }
+  .bg-photo img {
+    width:100%; height:100%; object-fit:cover;
+    filter:blur(60px) saturate(1.5) brightness(0.5);
+    transform:scale(1.15);
+  }
+  .bg-scrim {
+    position:absolute; inset:0; z-index:2;
+    background:linear-gradient(180deg, rgba(5,5,5,0.35) 0%, rgba(5,5,5,0.55) 38%, rgba(5,5,5,0.97) 92%);
+  }
+
+  .grain { position:absolute; inset:0; opacity:0.05; mix-blend-mode:overlay; pointer-events:none; z-index:60; }
   .grain svg { width:100%; height:100%; display:block; }
 
-  .reg-mark { position:absolute; width:18px; height:18px; opacity:0.35; z-index:40; }
+  .reg-mark { position:absolute; width:16px; height:16px; opacity:0.3; z-index:55; }
   .reg-mark::before, .reg-mark::after { content:''; position:absolute; background:var(--gray); }
   .reg-mark::before { top:50%; left:0; width:100%; height:1px; transform:translateY(-50%); }
   .reg-mark::after  { left:50%; top:0; height:100%; width:1px; transform:translateX(-50%); }
-  .reg-tl { top:24px; left:24px; }
-  .reg-br { bottom:24px; right:24px; }
+  .reg-tl { top:20px; left:20px; }
+  .reg-br { bottom:20px; right:20px; }
 
+  /* ---------- todo el contenido real va arriba de las capas de fondo ---------- */
   .topbar {
-    position:absolute; top:32px; left:72px; right:72px;
-    display:flex; justify-content:space-between; align-items:center; z-index:30;
+    position:relative; z-index:20; flex:0 0 auto;
+    display:flex; justify-content:space-between; align-items:center;
   }
   .logo-mark {
-    width:34px; height:34px; border:1.5px solid var(--white);
+    width:32px; height:32px; border:1.5px solid var(--white);
     display:flex; align-items:center; justify-content:center;
-    font-family:var(--sans); font-size:16px;
+    font-family:var(--sans); font-size:15px;
   }
-  .wordmark { font-family:var(--sans); font-size:18px; letter-spacing:5px; }
-
-  /* tab de país: único lugar donde el color nacional se ve "sólido" */
-  .country-tab {
-    position:absolute; top:32px; left:130px;
-    width:24px; height:13px; background:var(--accent); z-index:31;
-  }
+  .wordmark { font-family:var(--sans); font-size:16px; letter-spacing:5px; }
+  .country-tab { width:22px; height:12px; background:var(--accent); position:relative; }
   .country-tab::after {
-    content:''; position:absolute; left:100%; top:0; width:9px; height:13px; background:var(--accent-2);
+    content:''; position:absolute; left:100%; top:0; width:8px; height:12px; background:var(--accent-2);
   }
 
-  .country-name {
-    position:absolute; top:92px; left:72px; z-index:20;
-    font-family:var(--sans); font-size:78px; line-height:0.92;
-    text-transform:uppercase; letter-spacing:-1px;
+  /* ---------- título editorial: sólido + outline, integrado, compacto ---------- */
+  .title-block {
+    position:relative; z-index:20; flex:0 0 auto;
+    display:flex; align-items:baseline; gap:16px; margin-top:22px;
   }
-  .top10-tag {
-    position:absolute; top:168px; left:78px; z-index:15;
-    font-family:var(--sans); font-size:98px; line-height:0.9;
+  .title-solid {
+    font-family:var(--sans); font-size:44px; letter-spacing:-1px;
+    text-transform:uppercase; line-height:1;
+  }
+  .title-outline {
+    font-family:var(--serif); font-style:italic; font-size:42px;
     text-transform:uppercase; color:transparent;
-    -webkit-text-stroke:1.5px var(--gray);
-    letter-spacing:-2px;
+    -webkit-text-stroke:1.3px var(--white); opacity:0.85; line-height:1;
   }
-  .accent-line {
-    position:absolute; top:274px; left:72px; width:160px; height:4px; background:var(--accent); z-index:20;
-  }
-
-  .cover-frame {
-    position:absolute; top:302px; right:110px;
-    width:230px; height:230px; transform:rotate(3deg);
-    box-shadow:0 25px 50px rgba(0,0,0,0.65); overflow:hidden; z-index:12;
-    background:var(--dark-gray);
-  }
-  .cover-frame img {
-    width:100%; height:100%; object-fit:cover; display:block;
-    filter:grayscale(0.6) contrast(1.05) brightness(1.05);
-  }
-  .cover-frame .wash {
-    position:absolute; inset:0;
-    background:linear-gradient(155deg, rgba(66,99,255,0.28), rgba(0,0,0,0) 75%);
-    mix-blend-mode:multiply;
+  .title-rule {
+    flex:0 0 auto; width:110px; height:4px; background:var(--accent);
+    margin-top:12px;
   }
 
-  .vinyl-wrap { position:absolute; top:382px; right:390px; width:150px; height:150px; z-index:10; }
-  .vinyl {
-    width:100%; height:100%; border-radius:50%; position:relative;
+  /* ---------- HERO: el #1, protagonista absoluto ---------- */
+  .hero { position:relative; z-index:20; flex:0 0 auto; margin-top:14px; }
+  .hero-stage {
+    position:relative; height:452px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .hero-ghost-num {
+    position:absolute; left:-6px; top:50%; transform:translateY(-52%);
+    font-family:var(--sans); font-size:300px; line-height:1;
+    color:transparent; -webkit-text-stroke:2px var(--gray); opacity:0.5;
+    z-index:1; user-select:none;
+  }
+  .hero-vinyl {
+    position:absolute; right:56px; top:56%; transform:translateY(-50%);
+    width:250px; height:250px; z-index:2;
+    border-radius:50%;
     background:
       radial-gradient(circle at 42% 38%, rgba(255,255,255,0.10), rgba(255,255,255,0) 40%),
       repeating-radial-gradient(circle at 50% 50%, rgba(255,255,255,0.045) 0px, rgba(255,255,255,0.045) 1px, transparent 1px, transparent 5px),
       radial-gradient(circle at 50% 50%, #0e0e0e 0 9%, #050505 9% 100%);
-    box-shadow:0 16px 32px rgba(0,0,0,0.6);
+    box-shadow:0 20px 45px rgba(0,0,0,0.6);
   }
-  .vinyl::before {
-    content:''; position:absolute; width:50px; height:50px; border-radius:50%;
+  .hero-vinyl::before {
+    content:''; position:absolute; width:84px; height:84px; border-radius:50%;
     top:50%; left:50%; transform:translate(-50%,-50%); background:var(--accent);
   }
-  .vinyl::after {
-    content:''; position:absolute; width:6px; height:6px; border-radius:50%;
+  .hero-vinyl::after {
+    content:''; position:absolute; width:9px; height:9px; border-radius:50%;
     top:50%; left:50%; transform:translate(-50%,-50%); background:var(--black);
   }
+  /* La carátula: SIEMPRE completa (object-fit: contain), nunca recortada.
+     Sin wash de color encima -> el color real del artwork es el protagonista. */
+  .hero-cover-frame {
+    position:relative; z-index:5;
+    width:420px; height:420px; max-width:82%;
+    transform:rotate(-3deg);
+    background:var(--dark-gray);
+    box-shadow:0 42px 90px rgba(0,0,0,0.68), 0 10px 24px rgba(0,0,0,0.5);
+    display:flex; align-items:center; justify-content:center; overflow:hidden;
+  }
+  .hero-cover-frame img {
+    width:100%; height:100%; object-fit:contain; display:block;
+    filter:contrast(1.05) saturate(1.08);
+  }
 
-  .list {
-    position:absolute; top:600px; left:72px; right:72px; z-index:20;
+  .hero-caption { position:relative; z-index:5; text-align:center; margin-top:26px; }
+  .hero-rank-tag {
+    display:block; font-family:var(--sans); font-size:14px; letter-spacing:5px; color:var(--accent);
+    margin-bottom:8px;
   }
-  .list-row {
-    display:flex; align-items:baseline; gap:24px;
-    padding:19px 0; border-bottom:1px solid var(--dark-gray);
+  .hero-song {
+    font-family:var(--sans); font-size:42px; line-height:1.08; text-transform:uppercase;
+    max-width:840px; margin:0 auto;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
   }
-  .list-row:first-child { border-top:1px solid var(--dark-gray); }
-  .rank {
-    font-family:var(--serif); font-style:italic; font-size:21px; color:var(--gray); width:40px;
+  .hero-artist {
+    font-family:var(--serif); font-style:italic; font-size:21px; color:var(--gray);
+    margin-top:8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
-  .track-artist { font-family:var(--sans); font-size:20px; text-transform:uppercase; }
-  .track-title { font-family:var(--serif); font-style:italic; font-size:16px; color:var(--gray); margin-left:auto; text-align:right; }
 
-  .footer-line { position:absolute; bottom:58px; left:72px; right:72px; height:1px; background:var(--blue); z-index:20; }
-  .footer-cta { position:absolute; bottom:30px; left:72px; z-index:20; font-family:var(--sans); font-size:13px; letter-spacing:3px; }
-  .footer-year { position:absolute; bottom:30px; right:72px; z-index:20; font-family:var(--serif); font-style:italic; font-size:16px; color:var(--gray); }
+  /* ---------- 02-10: catálogo editorial, NO tabla ---------- */
+  .ranklist {
+    position:relative; z-index:20; flex:1 1 auto;
+    display:flex; flex-direction:column; justify-content:flex-start;
+    margin-top:22px; overflow:hidden;
+  }
+  .rank-row { display:flex; align-items:center; gap:22px; }
+  .rank-row.tier-mid  { padding:13px 0; }
+  .rank-row.tier-small{ padding:8px 0; }
+  .rank-row:nth-child(even) { margin-left:38px; } /* quiebra el grid perfecto */
+
+  .rank-num {
+    font-family:var(--serif); font-weight:500; line-height:1; color:transparent;
+    flex:0 0 auto;
+  }
+  .tier-mid .rank-num   { font-size:64px; -webkit-text-stroke:1.4px var(--accent); }
+  .tier-small .rank-num { font-size:42px; -webkit-text-stroke:1px var(--gray); opacity:0.85; }
+  .rank-row:nth-child(4n) .rank-num,
+  .rank-row:nth-child(4n+1) .rank-num { -webkit-text-stroke-color: var(--accent-2); }
+
+  .rank-text { flex:1 1 auto; min-width:0; }
+  .rank-song {
+    font-family:var(--sans); text-transform:uppercase; line-height:1.1;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .tier-mid .rank-song   { font-size:25px; }
+  .tier-small .rank-song { font-size:18px; }
+  .rank-artist {
+    font-family:var(--serif); font-style:italic; color:var(--gray); margin-top:3px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .tier-mid .rank-artist   { font-size:16px; }
+  .tier-small .rank-artist { font-size:13px; }
+
+  /* ---------- footer, discreto, nunca compite con el hero ---------- */
+  .footer {
+    position:relative; z-index:20; flex:0 0 auto;
+    display:flex; justify-content:space-between; align-items:baseline;
+    border-top:1px solid var(--blue); padding-top:12px; margin-top:14px;
+  }
+  .footer-cta { font-family:var(--sans); font-size:11px; letter-spacing:3px; color:var(--white); }
+  .footer-year { font-family:var(--serif); font-style:italic; font-size:14px; color:var(--gray); }
 </style>
 </head>
 <body>
   <div class="canvas">
 
+    <div class="bg-glow"></div>
+    <div class="bg-photo">
+      <img src="{{ featured_cover_url }}" alt="" onerror="this.style.display='none'" />
+    </div>
+    <div class="bg-scrim"></div>
+
     <div class="reg-mark reg-tl"></div>
     <div class="reg-mark reg-br"></div>
 
     <div class="topbar">
-      <div class="logo-mark">V</div>
+      <div style="display:flex; align-items:center; gap:14px;">
+        <div class="logo-mark">V</div>
+        <div class="country-tab"></div>
+      </div>
       <div class="wordmark">VINYLR</div>
     </div>
-    <div class="country-tab"></div>
 
-    <div class="country-name">{{ country_name }}</div>
-    <div class="top10-tag">TOP 10</div>
-    <div class="accent-line"></div>
-
-    <div class="cover-frame">
-      <img src="{{ featured_cover_url }}" alt="" onerror="this.style.display='none'" />
-      <div class="wash"></div>
+    <div class="title-block">
+      <div class="title-solid">{{ country_name }}</div>
+      <div class="title-outline">Top 10</div>
+      <div class="title-rule"></div>
     </div>
-    <div class="vinyl-wrap"><div class="vinyl"></div></div>
 
-    <div class="list">
-      {% for item in items %}
-      <div class="list-row">
-        <div class="rank">{{ "%02d"|format(item.rank) }}</div>
-        <div class="track-artist">{{ item.artist }}</div>
-        <div class="track-title">{{ item.title }}</div>
+    {% if items %}
+    <div class="hero">
+      <div class="hero-stage">
+        <div class="hero-ghost-num">01</div>
+        <div class="hero-vinyl"></div>
+        <div class="hero-cover-frame">
+          <img src="{{ featured_cover_url }}" alt="" onerror="this.style.display='none'" />
+        </div>
+      </div>
+      <div class="hero-caption">
+        <span class="hero-rank-tag">N.&deg; 01 EN LA REGIÓN</span>
+        <div class="hero-song">{{ items[0].title }}</div>
+        <div class="hero-artist">{{ items[0].artist }}</div>
+      </div>
+    </div>
+
+    <div class="ranklist">
+      {% for item in items[1:] %}
+      <div class="rank-row {{ 'tier-mid' if loop.index <= 2 else 'tier-small' }}">
+        <div class="rank-num">{{ "%02d"|format(item.rank) }}</div>
+        <div class="rank-text">
+          <div class="rank-song">{{ item.title }}</div>
+          <div class="rank-artist">{{ item.artist }}</div>
+        </div>
       </div>
       {% endfor %}
     </div>
+    {% endif %}
 
-    <div class="footer-line"></div>
-    <div class="footer-cta">VINYLR — EL LETTERBOXD DE LA MÚSICA</div>
-    <div class="footer-year">{{ year|default("2026") }}</div>
+    <div class="footer">
+      <div class="footer-cta">VINYLR — EL LETTERBOXD DE LA MÚSICA</div>
+      <div class="footer-year">{{ year|default("2026") }}</div>
+    </div>
 
     <div class="grain">
       <svg xmlns="http://www.w3.org/2000/svg">
