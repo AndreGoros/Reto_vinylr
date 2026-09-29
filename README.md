@@ -1,98 +1,138 @@
-Readme · MD
-Vinylr Content Engine — Etapa 1: Detección de tendencias
-Módulo que obtiene los álbumes en tendencia en LatAm (semanalmente) usando la API oficial de Spotify. Es el primer paso del motor de contenido para Instagram descrito en PROGRESS.md.
+# 🎵 Vinylr Content Engine
 
-🚀 Demo rápido (recomendado para empezar)
-Antes de configurar nada, puedes ver el concepto funcionando ahora mismo:
+> Motor de automatización para la detección de tendencias musicales en LatAm y generación automática de contenido estático (imágenes) y dinámico (Reels 9:16) para redes sociales.
 
-bash
+---
+
+## 📌 Descripción general
+
+El **Vinylr Content Engine** es el componente core encargado de:
+
+1. **Detección de tendencias (Etapa 1):** Rastrea semanalmente los álbumes más populares en Latinoamérica utilizando la API oficial de Spotify y Last.fm.
+2. **Generación de piezas estáticas (Etapa 2):** Renderiza plantillas HTML/CSS en imágenes de alta calidad (formatos tipo "Álbum A vs B" y "Top 10").
+3. **Generación de video (Reels/TikTok):** Compila animaciones en formato vertical (9:16) listas para publicación utilizando **Remotion**.
+
+---
+
+## 🚀 Demo rápido (100% resiliente)
+
+Puedes probar el motor inmediatamente sin configurar credenciales ni tener conexión a internet. El script de demo detecta la configuración disponible y conmuta automáticamente a datos o renderizado local según sea necesario.
+
+```bash
+# 1. Instalar dependencias
 pip install -r requirements.txt
+
+# 2. Ejecutar demo
 cd src
 python demo.py
-Esto genera las 2 imágenes "Álbum A vs B" (Lunes y Viernes) sin importar si ya tienes Spotify/APITemplate.io configurados:
 
-Si detecta credenciales de Spotify, usa datos reales; si no, usa datos de ejemplo (data/sample/).
-Si detecta credenciales de APITemplate.io, genera la imagen con la plantilla real; si no, la genera localmente con Pillow.
-Nunca falla — es la versión que puedes correr en cualquier momento para mostrarle a alguien cómo funciona, incluso sin internet.
-Las imágenes quedan en data/demo_output/<fecha>/.
+```
 
-Para forzar el modo 100% offline/ejemplo (sin siquiera intentar Spotify):
+Las imágenes generadas se guardarán en `data/demo_output/<fecha>/`.
 
-bash
-python demo.py --force-sample
-Para que además genere el Reel (.mp4) de cada pieza, junto a su imagen (requiere el setup de remotion-reels/ — ver más abajo):
+### Opciones y flags de ejecución
 
-bash
-python demo.py --with-reels      # posts (imágenes) + reels (video)
-python demo.py --posts-only      # solo imágenes — mismo resultado que sin flags, explícito
-python demo.py --reels-only      # solo video, sin generar las imágenes
-python demo.py --quick           # prueba express: 1 solo post + su reel, nada más
-Si Node.js o npm install no están listos, el demo lo avisa; con --with-reels o --quick sigue generando las imágenes igual, pero --reels-only aborta (no tendría nada que mostrar si no puede hacer el video).
+| Comando | Descripción |
+| --- | --- |
+| `python demo.py` | Ejecución estándar (usa Spotify/APITemplate si existen; si no, usa fallback local/sample). |
+| `python demo.py --force-sample` | Fuerza el modo 100% offline utilizando únicamente archivos de prueba local. |
+| `python demo.py --with-reels` | Genera tanto las imágenes estáticas como los videos (.mp4). Requiere setup de Remotion. |
+| `python demo.py --posts-only` | Genera exclusivamente imágenes estáticas (comportamiento por defecto). |
+| `python demo.py --reels-only` | Genera exclusivamente videos .mp4. Aborta si el entorno Node.js no está disponible. |
+| `python demo.py --quick` | Prueba express: procesa únicamente 1 post y su respectivo reel. |
 
-Setup
-Hay dos formas de correr este proyecto: con Docker/VS Code (recomendado) o con un venv local de Python. Elige una.
+---
 
-Opción A — VS Code Dev Containers (recomendado)
-Requisitos: Docker Desktop instalado y corriendo, y la extensión "Dev Containers" de VS Code (ms-vscode-remote.remote-containers).
+## 🛠️ Instalación y configuración
 
-Copia .env.example como .env y llena tus credenciales de Spotify:
-bash
-   cp .env.example .env
-Abre la carpeta vinylr-content-engine en VS Code.
-VS Code va a detectar la carpeta .devcontainer/ y te va a mostrar un aviso abajo a la derecha: "Reopen in Container". Dale clic. (Si no aparece: Cmd/Ctrl + Shift + P → "Dev Containers: Reopen in Container")
-Espera a que construya la imagen la primera vez (tarda un par de minutos). VS Code se va a reconectar y su terminal integrada ya va a estar dentro del contenedor, en /app.
-Corre el script normal, como si fuera local:
-bash
-   cd src
-   python fetch_trending.py --top 8 --countries MX AR CO CL
-Los archivos que genere en data/ van a aparecer también fuera del contenedor, en tu carpeta local data/ (está montada como volumen).
-Opción B — Docker + terminal, sin abrir VS Code dentro del contenedor
-Útil si solo quieres correr el script puntualmente desde tu terminal normal.
+Elige uno de los tres métodos de entorno de desarrollo según tu preferencia:
 
-bash
-cd vinylr-content-engine
-cp .env.example .env   # y llena tus credenciales
+### Opción A — VS Code Dev Containers (Recomendado)
 
-# Construye la imagen la primera vez (o si cambias requirements.txt)
+**Requisitos:** Docker Desktop corriendo y la extensión *Dev Containers* (`ms-vscode-remote.remote-containers`).
+
+1. Copia el archivo de variables de entorno:
+```bash
+cp .env.example .env
+
+```
+
+
+2. Abre la carpeta del proyecto en VS Code.
+3. Cuando aparezca el aviso *"Reopen in Container"*, haz clic en él (o presiona `Cmd/Ctrl + Shift + P` y selecciona `Dev Containers: Reopen in Container`).
+4. La terminal integrada de VS Code se abrirá dentro del contenedor en `/app`.
+
+---
+
+### Opción B — Docker Compose (Terminal)
+
+Útil para ejecuciones puntuales desde la consola sin abrir un IDE dentro del contenedor.
+
+```bash
+# 1. Configura variables de entorno
+cp .env.example .env
+
+# 2. Construye la imagen
 docker compose build
 
-# Corre el script (se borra el contenedor al terminar, --rm)
+# 3. Ejecuta el script (el contenedor se elimina automáticamente al finalizar)
 docker compose run --rm vinylr python fetch_trending.py --top 8 --countries MX AR CO CL
-Si prefieres dejar el contenedor corriendo y entrar con una shell:
 
-bash
+```
+
+Si prefieres mantener el contenedor en segundo plano:
+
+```bash
 docker compose up -d
 docker compose exec vinylr bash
-# ya adentro:
-cd src && python fetch_trending.py --top 8
-Opción C — Venv local (sin Docker)
-bash
-cd vinylr-content-engine
+
+```
+
+---
+
+### Opción C — Entorno virtual local (venv)
+
+```bash
 python -m venv venv
-source venv/bin/activate  # en Windows: venv\Scripts\activate
+source venv/bin/activate  # En Windows: venv\Scripts\activate
 pip install -r requirements.txt
 cp .env.example .env
-# Edita .env con tu Client ID y Client Secret
-Carga las variables de entorno antes de correr el script (o usa python-dotenv si prefieres cargarlas automáticamente agregando estas 2 líneas al inicio de fetch_trending.py):
 
-python
+```
+
+*Nota:* Si utilizas esta opción, asegúrate de cargar las variables de entorno en tus scripts mediante `python-dotenv`:
+
+```python
 from dotenv import load_dotenv
 load_dotenv()
-Uso
-bash
+
+```
+
+---
+
+## 💻 Uso del Pipeline
+
+### 1. Extracción de tendencias (Etapa 1)
+
+Ejecuta la recolección de álbumes populares para los países objetivo:
+
+```bash
 cd src
 python fetch_trending.py --top 8 --countries MX AR CO CL
-Esto genera data/trending_albums_<fecha>.json con algo como:
 
-json
+```
+
+Este comando genera una estructura JSON en `data/trending_albums_<fecha>.json` con la siguiente forma:
+
+```json
 {
   "generated_at": "2026-09-23T10:00:00",
   "count": 8,
   "albums": [
     {
-      "spotify_id": "...",
-      "name": "Nombre del álbum",
-      "artists": ["Artista"],
+      "spotify_id": "4aawyAB9vmqN3u3R432M29",
+      "name": "Nombre del Álbum",
+      "artists": ["Artista Principal"],
       "release_date": "2026-09-12",
       "cover_url": "https://i.scdn.co/image/...",
       "spotify_url": "https://open.spotify.com/album/...",
@@ -101,71 +141,87 @@ json
     }
   ]
 }
-Este JSON es el input directo de la Etapa 2 (generación de brief creativo en español), que se construirá en la siguiente iteración.
 
-Reels de video (opcional)
-Además de la imagen estática ("Álbum A vs B", "Top 10"), el proyecto puede generar la misma pieza como video 9:16 listo para Reels/TikTok, usando Remotion. Vive en remotion-reels/ (ver su propio README.md para el detalle de arquitectura: por qué Remotion, cómo se portaron los efectos de ReactBits, y dónde encaja 21st.dev). El puente entre Python y esa carpeta es src/render_reel.py.
+```
 
-Setup (una sola vez, requiere Node.js 18+):
+---
 
-bash
+### 2. Generación de Reels en Video (Remotion)
+
+Las piezas en video 9:16 utilizan **Remotion** (React) ubicadas en la carpeta `remotion-reels/`. El puente de integración desde Python es `src/render_reel.py`.
+
+#### Setup inicial de Remotion (requiere Node.js 18+):
+
+```bash
 cd remotion-reels
 npm install
-Uso:
+cd ..
 
-bash
-python demo.py --with-reels                              # video de cada pieza del demo
-python src/render_reel.py --kind duelo --type country     # solo el slot Lunes
-python src/render_reel.py --kind duelo --type cross       # solo el slot Viernes
-python src/render_reel.py --kind top10 --live              # Top 10 con Last.fm real
-Como el resto del pipeline: nada se publica automáticamente, los .mp4 quedan junto a las imágenes para la misma revisión humana de ~5 min.
+```
 
-Pendiente de construir: automatizar esto en weekly_content.yml (GitHub Actions) y en el Dockerfile — ambos son hoy 100% Python y no tienen Node instalado, así que por ahora los Reels solo se generan en local.
+#### Comandos de renderizado de video:
 
-Notas importantes
-No probado en vivo todavía: el entorno donde se escribió este código no tiene acceso a internet, así que la lógica está verificada por revisión pero falta correrlo una vez con credenciales reales para confirmar que los IDs de playlist siguen vigentes (Spotify los rota de vez en cuando).
-Primer paso al correrlo por primera vez: ejecútalo con --top 20 y revisa manualmente que los álbumes tengan sentido para tu mercado antes de conectarlo a la generación automática de contenido.
-Pensado para correr como cron job semanal (lunes temprano) vía GitHub Actions, para que el JSON esté listo antes de generar los posts del lunes.
-Docker: si cambias requirements.txt, corre docker compose build de nuevo (o, dentro de VS Code Dev Containers, Cmd/Ctrl+Shift+P → "Dev Containers: Rebuild Container") para que se reinstalen las dependencias.
-El archivo .env nunca se copia a la imagen de Docker (está en .dockerignore); se inyecta en tiempo de ejecución vía env_file en docker-compose.yml. Así tus credenciales no quedan hardcodeadas en la imagen.
-Automatización semanal con GitHub Actions
-El workflow .github/workflows/weekly_content.yml corre el pipeline real (Spotify → APITemplate.io) todos los lunes a las 08:00 UTC, y sube las imágenes generadas como un "artifact" descargable desde la pestaña Actions del repositorio — listo para la revisión humana de 5 minutos.
+```bash
+# Renderizar mediante demo.py
+python demo.py --with-reels
 
-Setup (una sola vez):
+# Renderizar slots individuales
+python src/render_reel.py --kind duelo --type country   # Slot Lunes
+python src/render_reel.py --kind duelo --type cross     # Slot Viernes
+python src/render_reel.py --kind top10 --live            # Top 10 con datos de Last.fm en vivo
 
-Sube este proyecto a un repositorio de GitHub.
-Ve a Settings → Secrets and variables → Actions → New repository secret y crea estos 4 secrets:
-SPOTIFY_CLIENT_ID
-SPOTIFY_CLIENT_SECRET
-APITEMPLATE_API_KEY
-APITEMPLATE_TEMPLATE_ID
-Listo. También puedes correrlo manualmente sin esperar al lunes: pestaña Actions → "Generar duelos semanales (Vinylr)" → Run workflow.
-Estructura del proyecto
+```
 
+---
+
+## 🤖 Automatización con GitHub Actions
+
+El flujo automatizado `.github/workflows/weekly_content.yml` ejecuta el pipeline todos los **lunes a las 08:00 UTC**. Genera las piezas gráficas y las sube como un *Artifact* descargable listo para la revisión humana (~5 min).
+
+### Configuración de Secrets en GitHub
+
+En tu repositorio de GitHub, ve a **Settings → Secrets and variables → Actions** y añade las siguientes llaves:
+
+* `SPOTIFY_CLIENT_ID`
+* `SPOTIFY_CLIENT_SECRET`
+* `APITEMPLATE_API_KEY`
+* `APITEMPLATE_TEMPLATE_ID`
+
+*Nota:* Para ejecutar manualmente la automatización, ve a la pestaña **Actions → Generar duelos semanales (Vinylr) → Run workflow**.
+
+---
+
+## 📁 Estructura del proyecto
+
+```text
 vinylr-content-engine/
-
-├── PROGRESS.md                  # registro de avance (leer primero)
-├── README.md
-├── Dockerfile / docker-compose.yml / .devcontainer/
-├── .github/workflows/weekly_content.yml
-├── requirements.txt
-├── .env.example
+├── PROGRESS.md                    # Bitácora de desarrollo y roadmap
+├── README.md                      # Documentación principal
+├── Dockerfile                     # Configuración de imagen Docker
+├── docker-compose.yml             # Orquestación de servicios Docker
+├── .devcontainer/                 # Configuración de Dev Containers (VS Code)
+├── .github/workflows/
+│   └── weekly_content.yml         # GitHub Actions Workflow (Cron semanal)
+├── requirements.txt               # Dependencias de Python
+├── .env.example                   # Plantilla de variables de entorno
 ├── data/
-│   ├── sample/                  # datos de ejemplo para el demo
-│   ├── generated/                # salida del pipeline real (producción) — incluye reels/ si se usó --with-reels o render_reel.py
-│   └── demo_output/              # salida de demo.py — incluye los .mp4 si se usó --with-reels
+│   ├── sample/                    # Datos estáticos para ejecuciones de prueba/offline
+│   ├── generated/                 # Archivos finales en producción (JSON, JPG, MP4)
+│   └── demo_output/               # Salida temporal generada por demo.py
 ├── src/
-│   ├── lastfm_client.py          # Etapa 1: cliente de Last.fm
-│   ├── fetch_trending.py         # Etapa 1: rankea álbumes trending
-│   ├── local_render_client.py    # Etapa 2: renderiza los templates HTML/CSS a imagen (Playwright)
-│   ├── generate_duels.py         # Etapa 2: arma duelos Lun/Vie + genera imágenes
-│   ├── generate_top10.py         # Etapa 2: arma y genera el Top 10 LatAm
-│   ├── render_reel.py            # Puente Python -> Remotion: mismos dicts, ahora como .mp4
-│   ├── templates/                # *.html.j2 — plantillas HTML/CSS de las imágenes
-│   └── demo.py                   # Demo on-demand, siempre funcional (--with-reels opcional)
-└── remotion-reels/               # Plantillas de VIDEO (9:16) con Remotion — ver su README.md
-    ├── src/compositions/          # DueloReel.tsx, Top10Reel.tsx
-    ├── src/components/            # UI de marca + efectos tipo ReactBits (portados a Remotion)
-    └── props/                     # ejemplos del "hueco" que rellena render_reel.py
+│   ├── fetch_trending.py          # Etapa 1: Cliente Spotify & ranking de tendencias
+│   ├── lastfm_client.py           # Etapa 1: Cliente Last.fm
+│   ├── local_render_client.py     # Etapa 2: Motor de renderizado HTML a Imagen (Playwright)
+│   ├── generate_duels.py          # Etapa 2: Generador de enfrentamientos (Lun/Vie)
+│   ├── generate_top10.py          # Etapa 2: Generador del Top 10 LatAm
+│   ├── render_reel.py             # Puente Python -> Remotion para render de video .mp4
+│   ├── demo.py                    # Script de demostración interactivo/offline
+│   └── templates/                 # Plantillas HTML/CSS (Jinja2) para imágenes estáticas
+└── remotion-reels/                # Proyecto Node.js / React Remotion para video
+    ├── src/compositions/          # Composiciones (DueloReel.tsx, Top10Reel.tsx)
+    ├── src/components/            # UI de marca y efectos visuales
+    └── props/                     # Archivos de prueba para renderizado de Reels
 
+```
 
+---
