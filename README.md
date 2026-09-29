@@ -141,7 +141,9 @@ APITEMPLATE_API_KEY
 APITEMPLATE_TEMPLATE_ID
 Listo. También puedes correrlo manualmente sin esperar al lunes: pestaña Actions → "Generar duelos semanales (Vinylr)" → Run workflow.
 Estructura del proyecto
+
 vinylr-content-engine/
+
 ├── PROGRESS.md                  # registro de avance (leer primero)
 ├── README.md
 ├── Dockerfile / docker-compose.yml / .devcontainer/
