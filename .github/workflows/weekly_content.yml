@@ -1,14 +1,21 @@
-
 # Corre el pipeline de contenido de Vinylr DOS veces por semana y deja los
 # resultados listos para revisión humana (como artifact descargable, NUNCA
 # publica nada solo):
 #
-#   LUNES   -> duelos intra-país (#1 vs #2 de cada país)
-#   VIERNES -> duelos cruzados entre países + el post "Top 10 LatAm"
+#   LUNES   -> duelos intra-país (#1 vs #2 de cada país) + su Reel (.mp4)
+#   VIERNES -> duelos cruzados entre países + el post "Top 10 LatAm",
+#              cada uno con su Reel (.mp4)
 #
 # Las imágenes se generan 100% localmente con Playwright + HTML/CSS (ver
 # src/local_render_client.py) — ya NO se usa APITemplate.io, así que no
 # hace falta ninguna API key ni template_id para esa parte.
+#
+# Los Reels (video 9:16) se generan con Remotion (ver remotion-reels/ y
+# src/render_reel.py) — reutilizan los MISMOS datos que ya arma cada paso
+# de imagen (misma corrida de fetch_trending.py, sin volver a llamar a la
+# API salvo para el Top 10, que sí re-consulta Last.fm porque ese es el
+# único modo "--live" que tiene render_reel.py). Este paso alarga el job
+# porque renderizar video tarda más que una imagen — es normal.
 #
 # Setup requerido (una sola vez, en GitHub):
 #   Settings → Secrets and variables → Actions → New repository secret
@@ -17,9 +24,9 @@
 # También se puede correr manualmente desde la pestaña "Actions" del repo
 # (botón "Run workflow"), eligiendo qué generar sin esperar al cron —
 # útil para pruebas.
- 
+
 name: Generar contenido semanal (Vinylr)
- 
+
 on:
   schedule:
     - cron: "0 8 * * 1" # Lunes 08:00 UTC (~02:00 CDMX) -> duelos intra-país
@@ -35,25 +42,39 @@ on:
           - monday # duelos intra-país
           - friday # duelos cruzados + Top 10 LatAm
           - both
- 
+
 jobs:
   generate-content:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout del repositorio
         uses: actions/checkout@v4
- 
+
       - name: Configurar Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
- 
-      - name: Instalar dependencias
+
+      - name: Instalar dependencias (Python)
         run: pip install -r requirements.txt
- 
+
       - name: Instalar Chromium para el render local (Playwright)
         run: python -m playwright install --with-deps chromium
- 
+
+      - name: Configurar Node.js (para los Reels con Remotion)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          # Sin "cache: npm" a propósito: requiere un package-lock.json
+          # committeado en remotion-reels/ o el paso falla. Una vez que
+          # exista ese lockfile en el repo, se puede agregar
+          # cache-dependency-path: remotion-reels/package-lock.json
+          # para acelerar corridas futuras.
+
+      - name: Instalar dependencias de Remotion (Reels)
+        working-directory: remotion-reels
+        run: npm install
+
       # Traduce el trigger (cron de Lunes/Viernes, o la elección manual en
       # workflow_dispatch) a un solo valor MODE que los pasos de abajo usan
       # en sus condiciones `if:`. github.event.schedule trae el cron EXACTO
@@ -71,57 +92,55 @@ jobs:
             echo "value=both" >> "$GITHUB_OUTPUT"
           fi
           echo "Modo resuelto: $(cat "$GITHUB_OUTPUT" | tail -n1)"
- 
+
       - name: Obtener álbumes en tendencia (Last.fm)
         working-directory: src
         env:
           LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
         run: python fetch_trending.py --top 2 --countries Mexico Argentina Colombia Chile
- 
+
       - name: "Lunes: duelos intra-país (#1 vs #2)"
         if: steps.mode.outputs.value == 'monday' || steps.mode.outputs.value == 'both'
         working-directory: src
         run: python generate_duels.py --type country
- 
+
+      - name: "Lunes: Reels de los duelos intra-país"
+        if: steps.mode.outputs.value == 'monday' || steps.mode.outputs.value == 'both'
+        working-directory: src
+        run: python render_reel.py --kind duelo --type country
+
       - name: "Viernes: duelos cruzados entre países"
         if: steps.mode.outputs.value == 'friday' || steps.mode.outputs.value == 'both'
         working-directory: src
         run: python generate_duels.py --type cross
- 
+
+      - name: "Viernes: Reels de los duelos cruzados"
+        if: steps.mode.outputs.value == 'friday' || steps.mode.outputs.value == 'both'
+        working-directory: src
+        run: python render_reel.py --kind duelo --type cross
+
       - name: "Viernes: Top 10 LatAm"
         if: steps.mode.outputs.value == 'friday' || steps.mode.outputs.value == 'both'
         working-directory: src
         env:
           LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
         run: python generate_top10.py
- 
+
+      - name: "Viernes: Reel del Top 10 LatAm"
+        if: steps.mode.outputs.value == 'friday' || steps.mode.outputs.value == 'both'
+        working-directory: src
+        env:
+          LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
+        # --live: el Top 10 no deja un archivo intermedio con la forma que
+        # necesita la plantilla de video (acentos de color, carátula
+        # destacada, etc.), así que este paso vuelve a armar el ranking
+        # llamando a Last.fm directamente — misma función que usa
+        # generate_top10.py, solo que una vez más.
+        run: python render_reel.py --kind top10 --live
+
       - name: Subir resultados para revisión humana
         uses: actions/upload-artifact@v4
         with:
           name: vinylr-${{ steps.mode.outputs.value }}-${{ github.run_number }}
           path: data/generated/
           retention-days: 14
- 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
