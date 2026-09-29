@@ -473,3 +473,22 @@ Pendiente / no verificable aquí
 Estado al cierre de esta iteración
  Todo lo anterior implementado.
 COMPLETA.
+Iteración 36 — Reels de video (Remotion) integrados al demo
+
+Pedido explícito de esta iteración
+Agregar plantillas de VIDEO (Reels 9:16) además de las imágenes estáticas, usando Remotion (+ efectos tipo ReactBits, + 21st.dev como referencia de UI), e integrarlas al pipeline y al demo existentes.
+
+Qué se hizo
+remotion-reels/ (proyecto Node/TypeScript nuevo, separado del Python del resto del repo): dos composiciones, DueloReel y Top10Reel, con la misma identidad visual que ya define BRAND_GUIDE.md y los templates .html.j2 (mismos colores, mismos acentos por país, mismo criterio de "carátula siempre completa, nunca recortada"). El Top 10 ajusta su duración automáticamente al número real de canciones (calculateMetadata).
+Los efectos de ReactBits (BlurText, ShinyText) no se importan del paquete original porque están pensados para tiempo real (GSAP/CSS timing) y Remotion renderiza cada frame por separado — se reimplementaron en src/components/reactbits.tsx impulsados 100% por useCurrentFrame(), para que el render sea determinista. 21st.dev se documentó como fuente de inspiración de UI (no de video): cualquier componente de ahí debe pasar por el mismo criterio antes de usarse en una composición.
+src/render_reel.py: puente Python -> Remotion. Reutiliza build_duels() y build_top10_latam() tal cual (no se tocó su lógica), y solo mapea sus dicts a los props de la plantilla — mismos nombres de campo (cover_url, artists, country) para no tener que traducir nada. Expone render_duel_video() / render_top10_video() reutilizables (no solo su propio CLI) para que demo.py las llame directo.
+demo.py: nueva bandera --with-reels. Sigue la misma filosofía "nunca falla" del resto del demo: si Node/npm install no están listos, lo avisa UNA vez al inicio y sigue generando las imágenes exactamente igual que siempre — ningún error de Remotion puede tumbar el demo de imágenes (exit_on_missing_deps=False en las llamadas desde demo.py, a diferencia del CLI standalone de render_reel.py que sí puede salir con sys.exit si se invoca solo).
+.gitignore / .dockerignore actualizados (remotion-reels/node_modules, /out — no son código fuente; la imagen Docker sigue siendo solo Python, no tiene Node instalado todavía).
+README.md: nueva sección "Reels de video (opcional)" + estructura del proyecto actualizada.
+
+Pendiente / no verificable aquí
+No se pudo correr npm install ni un render real en este entorno (sin salida de red) — el código de remotion-reels/ pasó una revisión de sintaxis (balance de llaves/paréntesis por archivo) pero no una compilación de TypeScript real ni un render en vivo. Probar con npm run studio antes de conectarlo al pipeline automático.
+weekly_content.yml (GitHub Actions) y el Dockerfile NO se tocaron — ambos son 100% Python hoy y no tienen Node, así que --with-reels solo funciona en local por ahora. Automatizarlo (agregar setup-node + npm ci + npx remotion render al workflow) queda pendiente y no se pidió explícitamente esta vez.
+
+Estado al cierre de esta iteración
+Todo lo anterior implementado. Falta verificación en vivo (Node/red) por parte del usuario.

@@ -1,0 +1,25 @@
+{
+  "name": "vinylr-reels",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Plantillas de video (Reels 9:16) de Vinylr con Remotion",
+  "scripts": {
+    "studio": "remotion studio",
+    "render:duelo": "remotion render DueloReel out/duelo.mp4 --props=props/duelo.sample.json",
+    "render:top10": "remotion render Top10Reel out/top10.mp4 --props=props/top10.sample.json",
+    "still:duelo": "remotion still DueloReel out/duelo.png --frame=280 --props=props/duelo.sample.json",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.290",
+    "@remotion/google-fonts": "4.0.290",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "remotion": "4.0.290",
+    "zod": "3.22.3"
+  },
+  "devDependencies": {
+    "@types/react": "18.3.3",
+    "typescript": "5.5.4"
+  }
+}

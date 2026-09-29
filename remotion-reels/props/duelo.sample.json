@@ -1,0 +1,23 @@
+{
+  "albumA": {
+    "name": "ÉXODO",
+    "artists": [
+      "Peso Pluma"
+    ],
+    "cover_url": "https://upload.wikimedia.org/wikipedia/en/e/e6/Peso_Pluma_-_%C3%89xodo.png",
+    "country": "Mexico"
+  },
+  "albumB": {
+    "name": "Mañana Será Bonito",
+    "artists": [
+      "Karol G"
+    ],
+    "cover_url": "https://upload.wikimedia.org/wikipedia/en/7/77/Karol_G_-_Ma%C3%B1ana_Ser%C3%A1_Bonito.png",
+    "country": "Colombia"
+  },
+  "kicker": "Nuevo duelo",
+  "headline": "¿Cuál fue mejor?",
+  "turnHeadline": "Tu turno",
+  "cta": "VOTA EN VINYLR",
+  "year": "2026"
+}
