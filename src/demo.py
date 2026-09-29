@@ -22,7 +22,16 @@ frente a jueces sin depender de que todo esté perfectamente configurado):
  
 Uso:
     python src/demo.py
-    python src/demo.py --force-sample      # fuerza el modo 100% offline/ejemplo
+    python src/demo.py --with-reels        # Genera posts y reels
+    python src/demo.py --posts-only        # Genera solo posts (default explícito)
+    python src/demo.py --reels-only        # Genera solo reels (sin imágenes)
+    python src/demo.py --quick             # Genera 1 post y 1 reel (prueba express)
+ 
+--with-reels añade un PLAN C opcional (nunca sustituye a la imagen, solo se
+suma): usa remotion-reels/ (ver ese README) para renderizar un video 9:16 de
+cada duelo y del Top 10, a partir de los MISMOS dicts que ya arma este script.
+Si Node.js o `npm install` no están listos, lo avisa y sigue sin los videos —
+el demo de imágenes nunca se ve afectado por esto.
 """
  
 import argparse
@@ -354,7 +363,56 @@ def main():
         action="store_true",
         help="Ignora Spotify aunque haya credenciales configuradas; usa siempre los datos de ejemplo.",
     )
+    parser.add_argument(
+        "--with-reels",
+        action="store_true",
+        help="Además de las imágenes, genera el Reel (.mp4) de cada pieza con Remotion (ver remotion-reels/).",
+    )
+    parser.add_argument(
+        "--posts-only",
+        action="store_true",
+        help="Genera SOLO las imágenes (posts), sin video — esto ya es el default; existe como alias explícito y gana si se combina con --with-reels/--reels-only por error.",
+    )
+    parser.add_argument(
+        "--reels-only",
+        action="store_true",
+        help="Genera SOLO los videos (Reels), sin crear las imágenes. Implica --with-reels.",
+    )
+    parser.add_argument(
+        "--quick",
+        action="store_true",
+        help=(
+            "Prueba rápida para mostrar en el momento: genera SOLO 1 duelo (imagen + video), "
+            "sin el resto de duelos ni el Top 10. Implica --with-reels."
+        ),
+    )
     args = parser.parse_args()
+    if args.quick:
+        args.with_reels = True
+    if args.reels_only:
+        args.with_reels = True
+    if args.posts_only:
+        args.with_reels = False  # gana al final: "solo posts" es explícito e inequívoco
+ 
+    skip_images = args.reels_only and not args.posts_only
+ 
+    reels_ready = False
+    if args.with_reels:
+        try:
+            from render_reel import remotion_ready
+ 
+            reels_ready = remotion_ready()
+            if not reels_ready:
+                print(
+                    "[reels] Node.js/dependencias no están listos todavía. Setup: "
+                    "cd remotion-reels && npm install\n"
+                )
+        except Exception as exc:  # noqa: BLE001 - --with-reels nunca debe tumbar el demo de imágenes
+            print(f"[reels] No se pudo preparar el módulo de video ({exc}).\n")
+ 
+    if skip_images and not reels_ready:
+        print("--reels-only pedido, pero el módulo de video no está listo — no se generaría nada. Abortando.")
+        sys.exit(1)
  
     print("=" * 60)
     print("  VINYLR CONTENT ENGINE — DEMO")
@@ -367,42 +425,83 @@ def main():
         print("No se pudieron armar duelos ni siquiera con los datos de ejemplo. Algo está mal.")
         sys.exit(1)
  
+    if args.quick:
+        duels = duels[:1]  # solo el primer duelo — nada de correr los demás ni el Top 10
+ 
     output_dir = os.path.join(
         os.path.dirname(__file__), "..", "data", "demo_output", datetime.now().strftime("%Y-%m-%d_%H%M%S")
     )
  
-    print(f"\nSe generarán {len(duels)} duelo(s) + el Top 10 LatAm en: {output_dir}\n")
+    if args.quick:
+        print(f"\n[quick] Generando SOLO 1 duelo (imagen + video) en: {output_dir}\n")
+    else:
+        print(f"\nSe generarán {len(duels)} duelo(s) + el Top 10 LatAm en: {output_dir}\n")
  
     for duel in duels:
         a, b = duel["album_a"], duel["album_b"]
         print(f"--- Duelo [{duel['type']}] {duel['label']}: {a['name']} vs {b['name']} ---")
-        dest_path = os.path.join(output_dir, f"duelo_{duel['label']}.png")
  
-        used_local_render = _try_local_render(a, b, dest_path, template_name=duel.get("template"))
-        if not used_local_render:
-            print("  [imagen] Generando versión con Pillow (respaldo garantizado)...")
-            generate_local_duel_image(a, b, dest_path)
+        if not skip_images:
+            dest_path = os.path.join(output_dir, f"duelo_{duel['label']}.png")
+            used_local_render = _try_local_render(a, b, dest_path, template_name=duel.get("template"))
+            if not used_local_render:
+                print("  [imagen] Generando versión con Pillow (respaldo garantizado)...")
+                generate_local_duel_image(a, b, dest_path)
+            print(f"  -> Imagen lista: {dest_path}\n")
  
-        print(f"  -> Imagen lista: {dest_path}\n")
+        if reels_ready:
+            from render_reel import render_duel_video
  
-    print("--- Generando el post 'Top 10 LatAm' ---\n")
-    top10_posts = get_top10_posts(force_sample=args.force_sample)
+            video_path = os.path.join(output_dir, f"reel_duelo_{duel['label']}.mp4")
+            print("  [reel] Renderizando video con Remotion (puede tardar) ...")
+            if render_duel_video(a, b, video_path, exit_on_missing_deps=False):
+                print(f"  -> Reel listo: {video_path}\n")
+            elif not skip_images:
+                print("  -> No se generó el reel de este duelo (ver aviso arriba); la imagen sigue disponible.\n")
+            else:
+                print("  -> No se generó el reel de este duelo (ver aviso arriba).\n")
+ 
+    if args.quick:
+        top10_posts: List[Dict[str, Any]] = []
+        print("[quick] Se omite el Top 10 (solo se pidió 1 duelo).\n")
+    else:
+        print("--- Generando el post 'Top 10 LatAm' ---\n")
+        top10_posts = get_top10_posts(force_sample=args.force_sample)
     for post in top10_posts:
         print(f"--- Top 10 {post['country_name']} ({len(post['items'])} canciones) ---")
-        dest_path = os.path.join(output_dir, f"top10_{post['country_param'].lower()}.png")
  
-        used_local_render = _try_local_render_top10(post, dest_path)
-        if not used_local_render:
-            print("  [imagen] Generando versión con Pillow (respaldo garantizado)...")
-            generate_local_top10_image(post, dest_path)
+        if not skip_images:
+            dest_path = os.path.join(output_dir, f"top10_{post['country_param'].lower()}.png")
+            used_local_render = _try_local_render_top10(post, dest_path)
+            if not used_local_render:
+                print("  [imagen] Generando versión con Pillow (respaldo garantizado)...")
+                generate_local_top10_image(post, dest_path)
+            print(f"  -> Imagen lista: {dest_path}\n")
  
-        print(f"  -> Imagen lista: {dest_path}\n")
+        if reels_ready:
+            from render_reel import render_top10_video
  
-    total_images = len(duels) + len(top10_posts)
+            video_path = os.path.join(output_dir, f"reel_top10_{post['country_param'].lower()}.mp4")
+            print("  [reel] Renderizando video con Remotion (puede tardar) ...")
+            if render_top10_video(post, video_path, exit_on_missing_deps=False):
+                print(f"  -> Reel listo: {video_path}\n")
+            elif not skip_images:
+                print("  -> No se generó el reel de este Top 10 (ver aviso arriba); la imagen sigue disponible.\n")
+            else:
+                print("  -> No se generó el reel de este Top 10 (ver aviso arriba).\n")
+ 
+    total_pieces = len(duels) + len(top10_posts)
  
     print("=" * 60)
-    print(f"LISTO. Abre la carpeta para ver las {total_images} imágenes generadas:")
+    if skip_images:
+        print(f"LISTO. Abre la carpeta para ver los {total_pieces} Reel(s) generado(s):")
+    elif args.with_reels:
+        print(f"LISTO. Abre la carpeta para ver las {total_pieces} imágenes (+ Reels) generadas:")
+    else:
+        print(f"LISTO. Abre la carpeta para ver las {total_pieces} imágenes generadas:")
     print(f"  {os.path.abspath(output_dir)}")
+    if args.with_reels and not reels_ready:
+        print("  (sin Reels: falta 'cd remotion-reels && npm install')")
     print("=" * 60)
  
  
@@ -424,3 +523,6 @@ if __name__ == "__main__":
  
  
  
+ 
+
+

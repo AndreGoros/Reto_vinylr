@@ -6,3 +6,9 @@ __pycache__/
 .git/
 .gitignore
 data/*.json
+
+# La imagen Docker es solo Python; no tiene Node, así que --with-reels no
+# puede correr ahí todavía (ver remotion-reels/README.md). No hace falta
+# copiar node_modules/salidas al build context.
+remotion-reels/node_modules/
+remotion-reels/out/

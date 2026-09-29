@@ -87,6 +87,11 @@ pieza.
      que todo esté 100% configurado.
 
 6. REVISIÓN HUMANA — manual, ~5 min, antes de programar cualquier publicación
+
+7. (OPCIONAL) VIDEO — Remotion (remotion-reels/)
+   → Mismos dicts de álbumes/Top 10 → Reel .mp4 (9:16), vía src/render_reel.py
+   → Activable en el demo con --with-reels; solo local por ahora (el Dockerfile
+     y GitHub Actions siguen siendo 100% Python, sin Node)
 ```
 
 ### Pendiente de construir

@@ -21,3 +21,8 @@ data/*.json
 # Archivos de sistema / editor
 .DS_Store
 Thumbs.db
+
+# Reels de video (Remotion) — dependencias y salidas locales, no código fuente.
+remotion-reels/node_modules/
+remotion-reels/out/
+remotion-reels/props/*.props.json
