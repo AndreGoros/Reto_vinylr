@@ -26,3 +26,4 @@ Thumbs.db
 remotion-reels/node_modules/
 remotion-reels/out/
 remotion-reels/props/*.props.json
+.venv/
