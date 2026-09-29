@@ -1,10 +1,10 @@
-# 🎵 Vinylr Content Engine
+# Vinylr Content Engine
 
 > Motor de automatización para la detección de tendencias musicales en LatAm y generación automática de contenido estático (imágenes) y dinámico (Reels 9:16) para redes sociales.
 
 ---
 
-## 📌 Descripción general
+## Descripción general
 
 El **Vinylr Content Engine** es el componente core encargado de:
 
@@ -14,7 +14,7 @@ El **Vinylr Content Engine** es el componente core encargado de:
 
 ---
 
-## 🚀 Demo rápido (100% resiliente)
+## Demo rápido (100% resiliente)
 
 Puedes probar el motor inmediatamente sin configurar credenciales ni tener conexión a internet. El script de demo detecta la configuración disponible y conmuta automáticamente a datos o renderizado local según sea necesario.
 
@@ -43,7 +43,7 @@ Las imágenes generadas se guardarán en `data/demo_output/<fecha>/`.
 
 ---
 
-## 🛠️ Instalación y configuración
+## Instalación y configuración
 
 Elige uno de los tres métodos de entorno de desarrollo según tu preferencia:
 
@@ -110,7 +110,7 @@ load_dotenv()
 
 ---
 
-## 💻 Uso del Pipeline
+## Uso del Pipeline
 
 ### 1. Extracción de tendencias (Etapa 1)
 
@@ -174,7 +174,7 @@ python src/render_reel.py --kind top10 --live            # Top 10 con datos de L
 
 ---
 
-## 🤖 Automatización con GitHub Actions
+## Automatización con GitHub Actions
 
 El flujo automatizado `.github/workflows/weekly_content.yml` ejecuta el pipeline todos los **lunes a las 08:00 UTC**. Genera las piezas gráficas y las sube como un *Artifact* descargable listo para la revisión humana (~5 min).
 
@@ -191,7 +191,7 @@ En tu repositorio de GitHub, ve a **Settings → Secrets and variables → Actio
 
 ---
 
-## 📁 Estructura del proyecto
+## Estructura del proyecto
 
 ```text
 vinylr-content-engine/
